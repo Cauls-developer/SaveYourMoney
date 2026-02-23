@@ -1,0 +1,15 @@
+INSTALADOR EM DESTAQUE (RAIZ DO PROJETO)
+- Arquivo final para distribuir:
+  SaveYourMoney-Installer.exe
+
+COMO GERAR NOVO INSTALLER (DEPLOY)
+1) Faça os ajustes no codigo.
+2) Na raiz do projeto, execute:
+   deploy-installer.bat
+3) Ao final, o novo instalador sera atualizado em:
+   SaveYourMoney-Installer.exe
+
+ARTEFATOS DE BUILD
+- Build detalhado:
+  frontend\dist\
+- O arquivo da raiz e o principal para envio/distribuicao.

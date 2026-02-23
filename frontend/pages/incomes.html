@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Entradas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Entradas</h2>
+        <p>Planeje suas entradas e receitas.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a href="expenses.html">Gastos</a>
+          <a class="active" href="incomes.html">Entradas</a>
+          <a href="categories.html">Categorias</a>
+          <a href="cards.html">Cartões</a>
+          <a href="reports.html">Relatórios</a>
+          <a href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+    <div class="section-title">Entradas do mês</div>
+    <button id="open-income-modal" class="button">Nova entrada</button>
+    <section class="section-title">Lista de entradas</section>
+    <ul id="incomes-list" class="list"></ul>
+  </div>
+
+  <div id="income-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nova entrada</h3>
+        <button class="modal-close" id="close-income-modal">×</button>
+      </div>
+      <form id="income-form" class="app-form">
+        <div class="field">
+          <label for="name">Nome</label>
+          <input id="name" placeholder="Ex.: Salário" required />
+        </div>
+        <div class="field">
+          <label for="value">Valor</label>
+          <input id="value" type="text" inputmode="decimal" placeholder="0,00" required />
+        </div>
+        <div class="field">
+          <label for="month">Mês</label>
+          <input id="month" type="number" min="1" max="12" placeholder="Mês" required />
+        </div>
+        <div class="field">
+          <label for="year">Ano</label>
+          <input id="year" type="number" min="2000" placeholder="Ano" required />
+        </div>
+        <div class="field">
+          <label for="confirmed">Status</label>
+          <select id="confirmed">
+            <option value="true">Confirmado</option>
+            <option value="false">Previsto</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="notes">Observação</label>
+          <textarea id="notes" placeholder="Detalhes adicionais"></textarea>
+        </div>
+        <button type="submit" class="button">Salvar entrada</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    const form = document.getElementById('income-form');
+    const list = document.getElementById('incomes-list');
+    const incomeModal = document.getElementById('income-modal');
+    const openIncomeModal = document.getElementById('open-income-modal');
+    const closeIncomeModal = document.getElementById('close-income-modal');
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function parseDecimal(value, fieldName) {
+      const raw = String(value || '').trim();
+      if (!raw) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+
+      let normalized = raw.replace(/\s/g, '');
+      if (normalized.includes(',') && normalized.includes('.')) {
+        normalized = normalized.replace(/\./g, '').replace(',', '.');
+      } else if (normalized.includes(',')) {
+        normalized = normalized.replace(',', '.');
+      }
+
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isNaN(parsed)) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+      return parsed;
+    }
+
+    function renderIncomes(incomes) {
+      list.innerHTML = '';
+      incomes.forEach((income) => {
+        const status = income.confirmed ? 'Confirmado' : 'Previsto';
+        const item = document.createElement('li');
+        item.innerHTML = `${income.name} - ${formatCurrency(income.value)} <span class="pill">${status}</span>`;
+        list.appendChild(item);
+      });
+    }
+
+    async function loadIncomes() {
+      const now = new Date();
+      const incomes = await window.api.listIncomes(now.getMonth() + 1, now.getFullYear());
+      renderIncomes(incomes);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const payload = {
+          name: document.getElementById('name').value.trim(),
+          value: parseDecimal(document.getElementById('value').value, 'Valor'),
+          month: Number(document.getElementById('month').value),
+          year: Number(document.getElementById('year').value),
+          confirmed: document.getElementById('confirmed').value === 'true',
+          notes: document.getElementById('notes').value.trim(),
+        };
+        await window.api.createIncome(payload);
+        form.reset();
+        incomeModal.classList.remove('active');
+        await loadIncomes();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    openIncomeModal.addEventListener('click', () => incomeModal.classList.add('active'));
+    closeIncomeModal.addEventListener('click', () => incomeModal.classList.remove('active'));
+    incomeModal.addEventListener('click', (event) => {
+      if (event.target === incomeModal) {
+        incomeModal.classList.remove('active');
+      }
+    });
+
+    loadIncomes().catch((error) => {
+      console.error(error);
+      list.innerHTML = '<li>Erro ao carregar entradas.</li>';
+    });
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+  </script>
+</body>
+</html>
+

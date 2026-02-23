@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Categorias</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Categorias</h2>
+        <p>Organize suas entradas e gastos.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a href="expenses.html">Gastos</a>
+          <a href="incomes.html">Entradas</a>
+          <a class="active" href="categories.html">Categorias</a>
+          <a href="cards.html">Cartões</a>
+          <a href="reports.html">Relatórios</a>
+          <a href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+    <div class="section-title">Categorias cadastradas</div>
+    <button id="open-category-modal" class="button">Nova categoria</button>
+    <section class="section-title">Lista de categorias</section>
+    <ul id="categories-list" class="list"></ul>
+  </div>
+
+  <div id="category-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nova categoria</h3>
+        <button class="modal-close" id="close-category-modal">×</button>
+      </div>
+      <form id="category-form" class="app-form">
+        <div class="field">
+          <label for="name">Nome</label>
+          <input id="name" placeholder="Ex.: Alimentação" required />
+        </div>
+        <div class="field">
+          <label for="description">Descrição</label>
+          <textarea id="description" placeholder="Detalhe a categoria"></textarea>
+        </div>
+        <button type="submit" class="button">Salvar categoria</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    const form = document.getElementById('category-form');
+    const list = document.getElementById('categories-list');
+    const categoryModal = document.getElementById('category-modal');
+    const openCategoryModal = document.getElementById('open-category-modal');
+    const closeCategoryModal = document.getElementById('close-category-modal');
+
+    function renderCategories(categories) {
+      list.innerHTML = '';
+      categories.forEach((category) => {
+        const item = document.createElement('li');
+        const description = category.description ? ` - ${category.description}` : '';
+        item.textContent = `${category.name}${description}`;
+        list.appendChild(item);
+      });
+    }
+
+    async function loadCategories() {
+      const categories = await window.api.listCategories();
+      renderCategories(categories);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        description: document.getElementById('description').value.trim(),
+      };
+      try {
+        await window.api.createCategory(payload);
+        form.reset();
+        categoryModal.classList.remove('active');
+        await loadCategories();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    openCategoryModal.addEventListener('click', () => categoryModal.classList.add('active'));
+    closeCategoryModal.addEventListener('click', () => categoryModal.classList.remove('active'));
+    categoryModal.addEventListener('click', (event) => {
+      if (event.target === categoryModal) {
+        categoryModal.classList.remove('active');
+      }
+    });
+
+    loadCategories().catch((error) => {
+      console.error(error);
+      list.innerHTML = '<li>Erro ao carregar categorias.</li>';
+    });
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+  </script>
+</body>
+</html>
+

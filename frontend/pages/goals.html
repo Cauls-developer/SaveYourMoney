@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Metas</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Metas</h2>
+        <p>Defina limites mensais e acompanhe o progresso.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a href="expenses.html">Gastos</a>
+          <a href="incomes.html">Entradas</a>
+          <a href="categories.html">Categorias</a>
+          <a href="cards.html">Cartões</a>
+          <a href="reports.html">Relatórios</a>
+          <a class="active" href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="section-title">Metas cadastradas</div>
+    <button id="open-goal-modal" class="button">Nova meta</button>
+
+    <ul id="goals-list" class="list"></ul>
+  </div>
+
+  <div id="goal-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Nova meta</h3>
+        <button class="modal-close" id="close-goal-modal">×</button>
+      </div>
+      <form id="goal-form" class="app-form">
+        <div class="field">
+          <label for="name">Nome</label>
+          <input id="name" placeholder="Ex.: Gastos do mês" required />
+        </div>
+        <div class="field">
+          <label for="limit-value">Valor limite</label>
+          <input id="limit-value" type="text" inputmode="decimal" placeholder="0,00" required />
+        </div>
+        <div class="field">
+          <label for="month">Mês</label>
+          <input id="month" type="number" min="1" max="12" required />
+        </div>
+        <div class="field">
+          <label for="year">Ano</label>
+          <input id="year" type="number" min="2000" required />
+        </div>
+        <div class="field">
+          <label for="category">Categoria (opcional)</label>
+          <select id="category">
+            <option value="">Todas as categorias</option>
+          </select>
+        </div>
+        <button type="submit" class="button">Salvar meta</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('goal-form');
+    const goalsList = document.getElementById('goals-list');
+    const categorySelect = document.getElementById('category');
+    const goalModal = document.getElementById('goal-modal');
+    const openGoalModal = document.getElementById('open-goal-modal');
+    const closeGoalModal = document.getElementById('close-goal-modal');
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function parseDecimal(value, fieldName) {
+      const raw = String(value || '').trim();
+      if (!raw) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+
+      let normalized = raw.replace(/\s/g, '');
+      if (normalized.includes(',') && normalized.includes('.')) {
+        normalized = normalized.replace(/\./g, '').replace(',', '.');
+      } else if (normalized.includes(',')) {
+        normalized = normalized.replace(',', '.');
+      }
+
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isNaN(parsed)) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+      return parsed;
+    }
+
+    async function loadCategories() {
+      const categories = await window.api.listCategories();
+      categories.forEach((category) => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        categorySelect.appendChild(option);
+      });
+    }
+
+    function renderGoals(goals) {
+      goalsList.innerHTML = '';
+      if (goals.length === 0) {
+        goalsList.innerHTML = '<li><small class="muted">Nenhuma meta cadastrada.</small></li>';
+        return;
+      }
+      goals.forEach((goal) => {
+        const item = document.createElement('li');
+        item.dataset.goalId = goal.id;
+        const categoryLabel = goal.category_id ? `Categoria #${goal.category_id}` : 'Todas as categorias';
+        item.innerHTML = `
+          <div class="goal-row">
+            <div class="goal-head">
+              <strong>${goal.name}</strong>
+              <span class="pill">${goal.month}/${goal.year}</span>
+            </div>
+            <small>Limite ${formatCurrency(goal.limit_value)} • ${categoryLabel}</small>
+            <div class="progress-bar">
+              <div class="progress" style="width: 0%"></div>
+            </div>
+          </div>
+        `;
+        goalsList.appendChild(item);
+      });
+    }
+
+    async function loadGoals() {
+      const goals = await window.api.listGoals();
+      renderGoals(goals);
+      const now = new Date();
+      const report = await window.api.getMonthlyReport(now.getMonth() + 1, now.getFullYear());
+      const goalById = new Map((report.goals || []).map((g) => [g.id, g]));
+      [...goalsList.children].forEach((item, index) => {
+        const goal = goals[index];
+        const status = goalById.get(goal.id);
+        const progressEl = item.querySelector('.progress');
+        const head = item.querySelector('.goal-head');
+        if (!head) return;
+        const statusPill = document.createElement('span');
+        if (status) {
+          const ok = status.remaining >= 0;
+          const progress = status.limit_value > 0 ? Math.min((status.spent / status.limit_value) * 100, 100) : 0;
+          if (progressEl) progressEl.style.width = `${progress.toFixed(1)}%`;
+          statusPill.className = `pill ${ok ? 'ok' : 'alert'}`;
+          statusPill.textContent = ok ? 'Dentro do limite' : 'Estourou';
+          const detail = item.querySelector('small');
+          if (detail) {
+            detail.textContent = `${detail.textContent} • Gasto atual ${formatCurrency(status.spent)}`;
+          }
+        } else {
+          statusPill.className = 'pill';
+          statusPill.textContent = 'Sem dados deste mês';
+        }
+        head.appendChild(statusPill);
+      });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const payload = {
+          name: document.getElementById('name').value.trim(),
+          limit_value: parseDecimal(document.getElementById('limit-value').value, 'Valor limite'),
+          month: Number(document.getElementById('month').value),
+          year: Number(document.getElementById('year').value),
+          category_id: categorySelect.value ? Number(categorySelect.value) : null,
+        };
+        await window.api.createGoal(payload);
+        form.reset();
+        goalModal.classList.remove('active');
+        await loadGoals();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    openGoalModal.addEventListener('click', () => goalModal.classList.add('active'));
+    closeGoalModal.addEventListener('click', () => goalModal.classList.remove('active'));
+    goalModal.addEventListener('click', (event) => {
+      if (event.target === goalModal) {
+        goalModal.classList.remove('active');
+      }
+    });
+
+    const now = new Date();
+    document.getElementById('month').value = now.getMonth() + 1;
+    document.getElementById('year').value = now.getFullYear();
+
+    Promise.all([loadCategories(), loadGoals()]).catch(console.error);
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+  </script>
+</body>
+</html>
+

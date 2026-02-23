@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Node/Electron
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Build artifacts
+*.exe
+*.dll
+*.blockmap
+*.asar
+
+# Local data
+*.db
+
+# OS/editor
+.DS_Store
+Thumbs.db

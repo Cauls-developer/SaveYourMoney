@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cartões</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Cartões</h2>
+        <p>Cadastre cartões e acompanhe suas faturas.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a href="expenses.html">Gastos</a>
+          <a href="incomes.html">Entradas</a>
+          <a href="categories.html">Categorias</a>
+          <a class="active" href="cards.html">Cartões</a>
+          <a href="reports.html">Relatórios</a>
+          <a href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="section-title">Cartões cadastrados</div>
+    <button id="open-card-modal" class="button">Novo cartão</button>
+
+    <ul id="cards-list" class="list"></ul>
+
+    <section class="section-title">Fatura do mês</section>
+    <div class="card">
+      <form id="invoice-form" class="app-form">
+        <div class="field">
+          <label for="card-select">Cartão</label>
+          <select id="card-select"></select>
+        </div>
+        <div class="field">
+          <label for="invoice-month">Mês</label>
+          <input id="invoice-month" type="number" min="1" max="12" />
+        </div>
+        <div class="field">
+          <label for="invoice-year">Ano</label>
+          <input id="invoice-year" type="number" min="2000" />
+        </div>
+        <button type="submit" class="button">Ver fatura</button>
+      </form>
+      <div class="section-title">Total</div>
+      <div id="invoice-total">R$ 0,00</div>
+      <ul id="invoice-list" class="list"></ul>
+    </div>
+  </div>
+
+  <div id="card-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Novo cartão</h3>
+        <button class="modal-close" id="close-card-modal">×</button>
+      </div>
+      <form id="card-form" class="app-form">
+        <div class="field">
+          <label for="name">Nome</label>
+          <input id="name" placeholder="Ex.: Nubank" required />
+        </div>
+        <div class="field">
+          <label for="limit">Limite</label>
+          <input id="limit" type="text" inputmode="decimal" placeholder="0,00" required />
+        </div>
+        <div class="field">
+          <label for="bank">Banco</label>
+          <input id="bank" placeholder="Ex.: Nubank" />
+        </div>
+        <div class="field">
+          <label for="brand">Bandeira</label>
+          <input id="brand" placeholder="Ex.: Mastercard" />
+        </div>
+        <div class="field">
+          <label for="closing-day">Dia de fechamento</label>
+          <input id="closing-day" type="number" min="1" max="31" value="1" />
+        </div>
+        <div class="field">
+          <label for="due-day">Dia de vencimento</label>
+          <input id="due-day" type="number" min="1" max="31" value="1" />
+        </div>
+        <button type="submit" class="button">Salvar cartão</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const cardForm = document.getElementById('card-form');
+    const cardsList = document.getElementById('cards-list');
+    const cardSelect = document.getElementById('card-select');
+    const invoiceForm = document.getElementById('invoice-form');
+    const invoiceList = document.getElementById('invoice-list');
+    const invoiceTotal = document.getElementById('invoice-total');
+    const cardModal = document.getElementById('card-modal');
+    const openCardModal = document.getElementById('open-card-modal');
+    const closeCardModal = document.getElementById('close-card-modal');
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function parseDecimal(value, fieldName) {
+      const raw = String(value || '').trim();
+      if (!raw) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+
+      let normalized = raw.replace(/\s/g, '');
+      if (normalized.includes(',') && normalized.includes('.')) {
+        normalized = normalized.replace(/\./g, '').replace(',', '.');
+      } else if (normalized.includes(',')) {
+        normalized = normalized.replace(',', '.');
+      }
+
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isNaN(parsed)) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+      return parsed;
+    }
+
+    function renderCards(cards) {
+      cardsList.innerHTML = '';
+      cardSelect.innerHTML = '';
+      cards.forEach((card) => {
+        const item = document.createElement('li');
+        item.innerHTML = `${card.name} - Limite ${formatCurrency(card.limit)} <span class="pill">${card.brand || 'Cartão'}</span>`;
+        cardsList.appendChild(item);
+        const option = document.createElement('option');
+        option.value = card.id;
+        option.textContent = card.name;
+        cardSelect.appendChild(option);
+      });
+    }
+
+    async function loadCards() {
+      const cards = await window.api.listCards();
+      renderCards(cards);
+    }
+
+    cardForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const payload = {
+          name: document.getElementById('name').value.trim(),
+          limit: parseDecimal(document.getElementById('limit').value, 'Limite'),
+          bank: document.getElementById('bank').value.trim(),
+          brand: document.getElementById('brand').value.trim(),
+          closing_day: Number(document.getElementById('closing-day').value),
+          due_day: Number(document.getElementById('due-day').value),
+        };
+        await window.api.createCard(payload);
+        cardForm.reset();
+        cardModal.classList.remove('active');
+        await loadCards();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    openCardModal.addEventListener('click', () => cardModal.classList.add('active'));
+    closeCardModal.addEventListener('click', () => cardModal.classList.remove('active'));
+    cardModal.addEventListener('click', (event) => {
+      if (event.target === cardModal) {
+        cardModal.classList.remove('active');
+      }
+    });
+
+    invoiceForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const cardId = Number(cardSelect.value);
+      const month = Number(document.getElementById('invoice-month').value);
+      const year = Number(document.getElementById('invoice-year').value);
+      try {
+        const data = await window.api.getInvoice(cardId, month, year);
+        invoiceTotal.textContent = formatCurrency(data.total);
+        invoiceList.innerHTML = '';
+        data.parcelas.forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = `${item.expense_name} - ${formatCurrency(item.value)} (${item.installment_number}/${item.total_installments})`;
+          invoiceList.appendChild(li);
+        });
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    const now = new Date();
+    document.getElementById('invoice-month').value = now.getMonth() + 1;
+    document.getElementById('invoice-year').value = now.getFullYear();
+
+    loadCards().catch((error) => {
+      console.error(error);
+      cardsList.innerHTML = '<li>Erro ao carregar cartões.</li>';
+    });
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+  </script>
+</body>
+</html>
+

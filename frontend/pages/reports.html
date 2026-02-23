@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Relatórios</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Relatórios</h2>
+        <p>Visão consolidada do mês.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a href="expenses.html">Gastos</a>
+          <a href="incomes.html">Entradas</a>
+          <a href="categories.html">Categorias</a>
+          <a href="cards.html">Cartões</a>
+          <a class="active" href="reports.html">Relatórios</a>
+          <a href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+
+    <section class="section-title">Selecionar período</section>
+    <div class="card">
+      <form id="report-form" class="app-form">
+        <div class="field">
+          <label for="report-month">Mês</label>
+          <input id="report-month" type="number" min="1" max="12" />
+        </div>
+        <div class="field">
+          <label for="report-year">Ano</label>
+          <input id="report-year" type="number" min="2000" />
+        </div>
+        <button type="submit" class="button">Gerar relatório</button>
+      </form>
+      <div class="section-title">Exportar</div>
+      <div class="grid">
+        <button id="export-csv" class="button ghost">Baixar CSV</button>
+        <button id="export-pdf" class="button ghost">Baixar PDF</button>
+      </div>
+    </div>
+
+    <section class="section-title">Resumo do mês</section>
+    <div class="grid cols-3">
+      <div class="card">
+        <h3>Total de Gastos</h3>
+        <div id="report-expenses">R$ 0,00</div>
+      </div>
+      <div class="card">
+        <h3>Total de Entradas</h3>
+        <div id="report-incomes">R$ 0,00</div>
+      </div>
+      <div class="card">
+        <h3>Saldo</h3>
+        <div id="report-balance">R$ 0,00</div>
+      </div>
+    </div>
+
+    <section class="section-title">Gastos por categoria</section>
+    <ul id="report-categories" class="list"></ul>
+
+    <section class="section-title">Metas do mês</section>
+    <ul id="report-goals" class="list"></ul>
+  </div>
+
+  <script>
+    const form = document.getElementById('report-form');
+    const reportExpenses = document.getElementById('report-expenses');
+    const reportIncomes = document.getElementById('report-incomes');
+    const reportBalance = document.getElementById('report-balance');
+    const reportCategories = document.getElementById('report-categories');
+    const reportGoals = document.getElementById('report-goals');
+    const exportCsv = document.getElementById('export-csv');
+    const exportPdf = document.getElementById('export-pdf');
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function renderReport(report) {
+      reportExpenses.textContent = formatCurrency(report.total_expenses);
+      reportIncomes.textContent = formatCurrency(report.total_incomes);
+      reportBalance.textContent = formatCurrency(report.balance);
+      reportCategories.innerHTML = '';
+      Object.entries(report.by_category || {}).forEach(([name, value]) => {
+        const item = document.createElement('li');
+        item.textContent = `${name} - ${formatCurrency(value)}`;
+        reportCategories.appendChild(item);
+      });
+      reportGoals.innerHTML = '';
+      (report.goals || []).forEach((goal) => {
+        const ok = goal.remaining >= 0;
+        const status = ok ? 'Dentro do limite' : 'Estourou';
+        const item = document.createElement('li');
+        item.innerHTML = `${goal.name} - ${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)} <span class="pill ${ok ? 'ok' : 'alert'}">${status}</span>`;
+        reportGoals.appendChild(item);
+      });
+    }
+
+    async function loadReport(month, year) {
+      const report = await window.api.getMonthlyReport(month, year);
+      renderReport(report);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const month = Number(document.getElementById('report-month').value);
+      const year = Number(document.getElementById('report-year').value);
+      try {
+        await loadReport(month, year);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    const now = new Date();
+    document.getElementById('report-month').value = now.getMonth() + 1;
+    document.getElementById('report-year').value = now.getFullYear();
+    loadReport(now.getMonth() + 1, now.getFullYear()).catch(console.error);
+
+    function getSelectedPeriod() {
+      const month = Number(document.getElementById('report-month').value);
+      const year = Number(document.getElementById('report-year').value);
+      return { month, year };
+    }
+
+    exportCsv.addEventListener('click', () => {
+      const { month, year } = getSelectedPeriod();
+      window.open(`http://localhost:5000/relatorios/mes/csv?mes=${month}&ano=${year}`);
+    });
+
+    exportPdf.addEventListener('click', () => {
+      const { month, year } = getSelectedPeriod();
+      window.open(`http://localhost:5000/relatorios/mes/pdf?mes=${month}&ano=${year}`);
+    });
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Save Your Money - Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h1>Save Your Money</h1>
+        <p>Uma visão clara do seu mês financeiro.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a class="active" href="dashboard.html">Dashboard</a>
+          <a href="expenses.html">Gastos</a>
+          <a href="incomes.html">Entradas</a>
+          <a href="categories.html">Categorias</a>
+          <a href="cards.html">Cartões</a>
+          <a href="reports.html">Relatórios</a>
+          <a href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+    <section class="hero">
+      <div class="grid cols-3">
+        <div class="card kpi-card expense">
+          <span class="kpi-label">Total de Gastos</span>
+          <h2 id="total-expenses">R$ 0,00</h2>
+          <small id="expenses-variation">Sem comparativo anterior.</small>
+        </div>
+        <div class="card kpi-card income">
+          <span class="kpi-label">Total de Entradas</span>
+          <h2 id="total-incomes">R$ 0,00</h2>
+          <small id="incomes-variation">Sem comparativo anterior.</small>
+        </div>
+        <div id="balance-card" class="card kpi-card balance">
+          <span class="kpi-label">Saldo do Mês</span>
+          <h2 id="total-balance">R$ 0,00</h2>
+          <small id="balance-status">Diferença entre entradas e gastos.</small>
+        </div>
+      </div>
+    </section>
+    <section class="section-title">Resumo rápido</section>
+    <div class="split">
+      <div class="card">
+        <h3>Últimos gastos</h3>
+        <ul id="recent-expenses" class="list"></ul>
+      </div>
+      <div class="card">
+        <h3>Últimas entradas</h3>
+        <ul id="recent-incomes" class="list"></ul>
+      </div>
+    </div>
+    <section class="section-title">Metas do mês</section>
+    <div class="card">
+      <ul id="goals-status" class="list"></ul>
+    </div>
+    <section class="section-title">Backup</section>
+    <div class="card">
+      <p class="muted">Crie uma cópia local do banco SQLite.</p>
+      <button id="backup-button" class="button ghost">Gerar backup</button>
+      <div id="backup-result" class="muted"></div>
+    </div>
+  </div>
+  <script>
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function getPreviousPeriod(month, year) {
+      if (month === 1) {
+        return { month: 12, year: year - 1 };
+      }
+      return { month: month - 1, year };
+    }
+
+    function sumValue(items) {
+      return items.reduce((sum, item) => sum + Number(item.value || 0), 0);
+    }
+
+    function toVariation(current, previous) {
+      if (!previous) {
+        if (!current) return '0%';
+        return '+100%';
+      }
+      const variation = ((current - previous) / previous) * 100;
+      const sign = variation > 0 ? '+' : '';
+      return `${sign}${variation.toFixed(1)}%`;
+    }
+
+    async function loadSummary() {
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const previousPeriod = getPreviousPeriod(month, year);
+      try {
+        const [expenses, incomes, report, previousExpenses, previousIncomes] = await Promise.all([
+          window.api.listExpenses(month, year),
+          window.api.listIncomes(month, year),
+          window.api.getMonthlyReport(month, year),
+          window.api.listExpenses(previousPeriod.month, previousPeriod.year),
+          window.api.listIncomes(previousPeriod.month, previousPeriod.year),
+        ]);
+        const totalExpenses = sumValue(expenses);
+        const totalIncomes = sumValue(incomes);
+        const previousTotalExpenses = sumValue(previousExpenses);
+        const previousTotalIncomes = sumValue(previousIncomes);
+        const balance = totalIncomes - totalExpenses;
+        document.getElementById('total-expenses').textContent = formatCurrency(totalExpenses);
+        document.getElementById('total-incomes').textContent = formatCurrency(totalIncomes);
+        document.getElementById('total-balance').textContent = formatCurrency(balance);
+        document.getElementById('expenses-variation').textContent = `${toVariation(totalExpenses, previousTotalExpenses)} vs mês anterior`;
+        document.getElementById('incomes-variation').textContent = `${toVariation(totalIncomes, previousTotalIncomes)} vs mês anterior`;
+        document.getElementById('balance-status').textContent = balance >= 0 ? 'Saldo positivo no mês atual.' : 'Saldo negativo no mês atual.';
+        document.getElementById('balance-card').classList.toggle('positive', balance >= 0);
+        document.getElementById('balance-card').classList.toggle('negative', balance < 0);
+
+        const recentExpenses = expenses.slice(-5).reverse();
+        const recentIncomes = incomes.slice(-5).reverse();
+        const expensesList = document.getElementById('recent-expenses');
+        const incomesList = document.getElementById('recent-incomes');
+        expensesList.innerHTML = '';
+        incomesList.innerHTML = '';
+        if (recentExpenses.length === 0) {
+          expensesList.innerHTML = '<li><small class="muted">Nenhum gasto neste mês.</small></li>';
+        } else {
+          recentExpenses.forEach((expense) => {
+            const item = document.createElement('li');
+            item.innerHTML = `
+              <div>
+                <strong>${expense.name}</strong>
+                <small>${expense.month}/${expense.year}</small>
+              </div>
+              <strong>${formatCurrency(expense.value)}</strong>
+            `;
+            expensesList.appendChild(item);
+          });
+        }
+
+        if (recentIncomes.length === 0) {
+          incomesList.innerHTML = '<li><small class="muted">Nenhuma entrada neste mês.</small></li>';
+        } else {
+          recentIncomes.forEach((income) => {
+            const item = document.createElement('li');
+            const label = income.confirmed ? 'Confirmado' : 'Previsto';
+            item.innerHTML = `
+              <div>
+                <strong>${income.name}</strong>
+                <small>${formatCurrency(income.value)}</small>
+              </div>
+              <span class="pill">${label}</span>
+            `;
+            incomesList.appendChild(item);
+          });
+        }
+
+        const goalsList = document.getElementById('goals-status');
+        goalsList.innerHTML = '';
+        if (report.goals && report.goals.length > 0) {
+          report.goals.forEach((goal) => {
+            const ok = goal.remaining >= 0;
+            const progress = goal.limit_value > 0 ? Math.min((goal.spent / goal.limit_value) * 100, 100) : 0;
+            const item = document.createElement('li');
+            item.innerHTML = `
+              <div class="goal-row">
+                <div class="goal-head">
+                  <strong>${goal.name}</strong>
+                  <span class="pill ${ok ? 'ok' : 'alert'}">${ok ? 'Dentro' : 'Estourou'}</span>
+                </div>
+                <small>${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)}</small>
+                <div class="progress-bar">
+                  <div class="progress" style="width: ${progress.toFixed(1)}%"></div>
+                </div>
+              </div>
+            `;
+            goalsList.appendChild(item);
+          });
+        } else {
+          const item = document.createElement('li');
+          item.textContent = 'Nenhuma meta cadastrada para o mês.';
+          goalsList.appendChild(item);
+        }
+      } catch (error) {
+        document.getElementById('total-expenses').textContent = 'Erro ao carregar.';
+        document.getElementById('total-incomes').textContent = 'Erro ao carregar.';
+        document.getElementById('total-balance').textContent = 'Erro ao carregar.';
+        console.error(error);
+      }
+    }
+
+    loadSummary();
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+
+    const backupButton = document.getElementById('backup-button');
+    const backupResult = document.getElementById('backup-result');
+
+    backupButton.addEventListener('click', async () => {
+      backupResult.textContent = 'Gerando backup...';
+      try {
+        const res = await fetch('http://localhost:5000/backup', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Erro ao gerar backup.');
+        }
+        backupResult.textContent = `Backup criado: ${data.backup}`;
+      } catch (error) {
+        backupResult.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>
+

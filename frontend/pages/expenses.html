@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gastos</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Gastos</h2>
+        <p>Registre cada saída e acompanhe o mês.</p>
+      </div>
+      <div class="navbar">
+        <div class="logo">
+          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+          <span>Save Your Money</span>
+        </div>
+        <button id="nav-toggle" class="nav-toggle">Menu</button>
+        <nav class="app-nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a class="active" href="expenses.html">Gastos</a>
+          <a href="incomes.html">Entradas</a>
+          <a href="categories.html">Categorias</a>
+          <a href="cards.html">Cartões</a>
+          <a href="reports.html">Relatórios</a>
+          <a href="goals.html">Metas</a>
+          <a href="recurrences.html">Recorrências</a>
+        </nav>
+      </div>
+    </header>
+    <div class="section-title">Gastos do mês</div>
+    <button id="open-expense-modal" class="button">Novo gasto</button>
+    <section class="section-title">Lista de gastos</section>
+    <ul id="expenses-list" class="list"></ul>
+  </div>
+
+  <div id="expense-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Novo gasto</h3>
+        <button class="modal-close" id="close-expense-modal">×</button>
+      </div>
+      <form id="expense-form" class="app-form">
+        <div class="field">
+          <label for="name">Nome</label>
+          <input id="name" placeholder="Ex.: Supermercado" required />
+        </div>
+        <div class="field">
+          <label for="value">Valor</label>
+          <input id="value" type="text" inputmode="decimal" placeholder="0,00" required />
+        </div>
+        <div class="field">
+          <label for="month">Mês</label>
+          <input id="month" type="number" min="1" max="12" placeholder="Mês" required />
+        </div>
+        <div class="field">
+          <label for="year">Ano</label>
+          <input id="year" type="number" min="2000" placeholder="Ano" required />
+        </div>
+        <div class="field">
+          <label for="payment-method">Forma</label>
+          <select id="payment-method">
+            <option value="debit">Débito</option>
+            <option value="credit">Crédito</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="card-id">Cartão (opcional)</label>
+          <select id="card-id">
+            <option value="">Sem cartão</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="installments">Parcelas</label>
+          <input id="installments" type="number" min="1" value="1" />
+        </div>
+        <div class="field">
+          <label for="notes">Observação</label>
+          <textarea id="notes" placeholder="Detalhes adicionais"></textarea>
+        </div>
+        <button type="submit" class="button">Salvar gasto</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    const form = document.getElementById('expense-form');
+    const list = document.getElementById('expenses-list');
+    const cardSelect = document.getElementById('card-id');
+    const expenseModal = document.getElementById('expense-modal');
+    const openExpenseModal = document.getElementById('open-expense-modal');
+    const closeExpenseModal = document.getElementById('close-expense-modal');
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function parseDecimal(value, fieldName) {
+      const raw = String(value || '').trim();
+      if (!raw) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+
+      let normalized = raw.replace(/\s/g, '');
+      if (normalized.includes(',') && normalized.includes('.')) {
+        normalized = normalized.replace(/\./g, '').replace(',', '.');
+      } else if (normalized.includes(',')) {
+        normalized = normalized.replace(',', '.');
+      }
+
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isNaN(parsed)) {
+        throw new Error(`Informe um valor válido para ${fieldName}.`);
+      }
+      return parsed;
+    }
+
+    function renderExpenses(expenses) {
+      list.innerHTML = '';
+      expenses.forEach((expense) => {
+        const item = document.createElement('li');
+        item.innerHTML = `${expense.name} - ${formatCurrency(expense.value)} <span class="pill">${expense.month}/${expense.year}</span>`;
+        list.appendChild(item);
+      });
+    }
+
+    async function loadExpenses() {
+      const now = new Date();
+      const expenses = await window.api.listExpenses(now.getMonth() + 1, now.getFullYear());
+      renderExpenses(expenses);
+    }
+
+    async function loadCards() {
+      const cards = await window.api.listCards();
+      cards.forEach((card) => {
+        const option = document.createElement('option');
+        option.value = card.id;
+        option.textContent = card.name;
+        cardSelect.appendChild(option);
+      });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const payload = {
+          name: document.getElementById('name').value.trim(),
+          value: parseDecimal(document.getElementById('value').value, 'Valor'),
+          month: Number(document.getElementById('month').value),
+          year: Number(document.getElementById('year').value),
+          payment_method: document.getElementById('payment-method').value,
+          notes: document.getElementById('notes').value.trim(),
+        };
+        const cardId = cardSelect.value ? Number(cardSelect.value) : null;
+        const installments = Number(document.getElementById('installments').value || 1);
+        if (payload.payment_method === 'credit' && cardId && installments > 1) {
+          payload.installments = { card_id: cardId, total: installments };
+        }
+        await window.api.createExpense(payload);
+        form.reset();
+        expenseModal.classList.remove('active');
+        await loadExpenses();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    openExpenseModal.addEventListener('click', () => expenseModal.classList.add('active'));
+    closeExpenseModal.addEventListener('click', () => expenseModal.classList.remove('active'));
+    expenseModal.addEventListener('click', (event) => {
+      if (event.target === expenseModal) {
+        expenseModal.classList.remove('active');
+      }
+    });
+
+    Promise.all([loadExpenses(), loadCards()]).catch((error) => {
+      console.error(error);
+      list.innerHTML = '<li>Erro ao carregar gastos.</li>';
+    });
+
+    const navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+    }
+  </script>
+</body>
+</html>
+
