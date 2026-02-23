@@ -1,99 +1,135 @@
 # Save Your Money
 
-Aplicativo desktop para controle de finanças pessoais. Este repositório contém uma implementação inicial de referência com backend em Python e interface em Electron. O objetivo do MVP é permitir o registro de categorias, gastos e entradas de dinheiro em um banco local SQLite.
+Aplicativo desktop para controle de finanças pessoais, com backend em Python (Flask + SQLite) e interface em Electron.
 
-## Instalador (Raiz)
+## Visão geral
 
-- Arquivo para distribuir: `SaveYourMoney-Installer.exe`
-- Para gerar um novo apos ajustes no codigo: execute `deploy-installer.bat` na raiz.
-- Guia rapido: `DEPLOY-INSTALLER.txt`
+- Backend local com API HTTP em `http://127.0.0.1:5000`
+- Frontend desktop em Electron
+- Banco local SQLite (`saveyourmoney.db`)
+- Geração de instalador Windows (`.exe`) com `electron-builder`
+- Suporte a auto-update via `electron-updater`
+
+## Estrutura do projeto
+
+```text
+backend/                 # API, domínio, casos de uso e repositórios SQLite
+frontend/                # Aplicação Electron
+deploy-installer.bat     # Script de deploy do instalador
+DEPLOY-INSTALLER.txt     # Guia rápido do deploy
+SaveYourMoney-Installer.exe  # Instalador final para distribuição (raiz)
+```
 
 ## Pré-requisitos
 
+- Windows (fluxo de instalador atual foi preparado para Windows/NSIS)
 - Python 3.10+
-- Node 18+
+- Node.js 18+
 - npm
 
-## Estrutura de Pastas
+## Setup de desenvolvimento
 
+1. Criar e preparar o ambiente Python:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
-backend/        # Código Python contendo domínio, serviços, repositórios e casos de uso
-frontend/       # Código Electron para a interface de usuário
+
+2. Instalar dependências do frontend:
+
+```powershell
+cd ..\frontend
+npm install
 ```
 
-Consulte `implementation_plan.md` para obter o roadmap e detalhes de arquitetura.
+## Como executar em desenvolvimento
 
-## Instalação
+1. Iniciar backend (na raiz do projeto):
 
-1. Backend:
-   - `cd backend`
-   - `python -m venv .venv`
-   - Ative o ambiente virtual
-   - `pip install -r requirements.txt`
-2. Frontend:
-   - `cd frontend`
-   - `npm install`
+```powershell
+cd D:\developer\projects\SaveYourMoney
+backend\.venv\Scripts\python.exe -m backend.app
+```
 
-## Execução
+2. Em outro terminal, iniciar Electron:
 
-1. Inicie o backend:
-   - `python -m backend.app`
-2. Em outro terminal, inicie o Electron:
-   - `npm run start`
+```powershell
+cd D:\developer\projects\SaveYourMoney\frontend
+npm run start
+```
 
-## Executável `.exe` (sem terminal para o usuário)
+## Build do instalador (recomendado)
 
-O frontend agora inicia o backend automaticamente em segundo plano. Isso permite distribuir o app como instalador `.exe` para uso por clique duplo.
+Use o script da raiz:
 
-### Como gerar o instalador no Windows
+```powershell
+.\deploy-installer.bat
+```
 
-1. Garanta que o ambiente Python do backend esteja pronto:
-   - `cd backend`
-   - `python -m venv .venv`
-   - `.\.venv\Scripts\pip install -r requirements.txt`
-2. Instale dependências de build do frontend:
-   - `cd ..\frontend`
-   - `npm install`
-3. Gere o instalador:
-   - `npm run build:win`
+Esse script executa automaticamente:
 
-O instalador será gerado em `frontend\dist\` (arquivo `.exe`).
+1. Cria o `backend\.venv` (se não existir) e instala `backend\requirements.txt`
+2. Executa `npm install` no `frontend`
+3. Gera instalador com `npx electron-builder --win nsis`
+4. Copia o instalador mais recente de `frontend\dist\SaveYourMoney Setup *.exe` para:
+   `SaveYourMoney-Installer.exe` (na raiz)
 
-### Primeiro uso e próximos usos
+Arquivo final para distribuição:
 
-- Primeiro uso: o usuário instala e abre o app pelo atalho do Windows.
-- Próximos usos: basta abrir o atalho; o backend sobe automaticamente.
-- O banco SQLite e backups ficam na pasta de dados do usuário (AppData), evitando problemas de permissão em `Program Files`.
+- `SaveYourMoney-Installer.exe`
 
-## Atualização automática (auto-update)
+Referência rápida:
 
-O app já está preparado para auto-update no Windows via `electron-updater`.
+- `DEPLOY-INSTALLER.txt`
 
-### Configuração inicial
+## Build manual (alternativa)
 
-1. Edite `frontend\update-config.json` e informe a URL pública onde ficarão os arquivos de atualização:
-   - exemplo: `https://seudominio.com/saveyourmoney/windows`
-2. Gere o instalador:
-   - `cd frontend`
-   - `npm install`
-   - `npm run build:win`
+```powershell
+cd frontend
+npm install
+npm run build:win
+```
 
-Na pasta `frontend\dist\` serão gerados, entre outros:
-- `SaveYourMoney Setup <versao>.exe`
-- `latest.yml`
-- pacote(s) `.7z`/`.exe` usados no update
+Artefatos de build ficam em `frontend\dist\`.
 
-### Publicação dos updates
+## Execução no app instalado
 
-1. Faça upload de **todos** os arquivos gerados em `frontend\dist\` para a URL definida em `update-config.json`.
-2. Mantenha os nomes dos arquivos exatamente como gerados.
-3. Em cada nova versão:
-   - aumente `version` em `frontend\package.json`
-   - rode `npm run build:win`
-   - publique novamente os novos arquivos na mesma URL
+- O Electron inicia o backend automaticamente em segundo plano.
+- Dados e backups são gravados na pasta de usuário (`AppData`), não em `Program Files`.
+- Logs do backend ficam em `AppData\...\logs\backend.log`.
 
-### Comportamento no usuário final
+## Auto-update (Windows)
 
-- O app verifica atualização automaticamente ao abrir e periodicamente.
-- Se houver nova versão, pergunta se deseja baixar.
-- Após baixar, pergunta se deseja reiniciar para instalar.
+O app usa `electron-updater` com provider `generic`.
+
+1. Configure `frontend\update-config.json` com a URL pública dos artefatos.
+2. A cada release:
+   - Atualize `version` em `frontend\package.json`
+   - Rode o build
+   - Publique **todos** os arquivos de `frontend\dist\` na URL configurada
+
+## Testes (backend)
+
+Os testes ficam em `backend\tests\`. Se quiser executar:
+
+```powershell
+cd backend
+python -m pytest
+```
+
+Se `pytest` não estiver instalado no ambiente, instale com:
+
+```powershell
+python -m pip install pytest
+```
+
+## Troubleshooting rápido
+
+- Erro no build do instalador:
+  - Verifique se Node/npm estão instalados e acessíveis no terminal.
+- Backend não sobe no app instalado:
+  - Verifique o log em `AppData\...\logs\backend.log`.
+- `SaveYourMoney-Installer.exe` não atualizou:
+  - Confirme se `frontend\dist\SaveYourMoney Setup *.exe` foi gerado com sucesso.
