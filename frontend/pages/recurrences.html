@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -27,6 +27,7 @@
           <a href="reports.html">Relatórios</a>
           <a href="goals.html">Metas</a>
           <a class="active" href="recurrences.html">Recorrências</a>
+          <a href="backup.html">Backup</a>
         </nav>
       </div>
     </header>
@@ -111,6 +112,9 @@
     const recurrenceModal = document.getElementById('recurrence-modal');
     const openRecurrenceModal = document.getElementById('open-recurrence-modal');
     const closeRecurrenceModal = document.getElementById('close-recurrence-modal');
+    const kindSelect = document.getElementById('kind');
+    const paymentMethodField = document.getElementById('payment-method').closest('.field');
+    const confirmedField = document.getElementById('confirmed').closest('.field');
 
     function parseDecimal(value, fieldName) {
       const raw = String(value || '').trim();
@@ -148,14 +152,24 @@
         const item = document.createElement('li');
         item.innerHTML = `${recurrence.name} - ${recurrence.kind} <span class="pill">${recurrence.start_month}/${recurrence.start_year}</span>`;
         const button = document.createElement('button');
+        button.type = 'button';
         button.className = 'button';
         button.textContent = 'Aplicar';
         button.addEventListener('click', async () => {
+          const confirmedApply = window.confirm('Aplicar esta recorrência agora? Isso criará os lançamentos previstos.');
+          if (!confirmedApply) return;
+          button.disabled = true;
+          const previousLabel = button.textContent;
+          button.textContent = 'Aplicando...';
           try {
-            await window.api.applyRecurrence(recurrence.id);
-            alert('Recorrência aplicada!');
+            const result = await window.api.applyRecurrence(recurrence.id);
+            const createdCount = (result.expenses || []).length + (result.incomes || []).length;
+            alert(`Recorrência aplicada! ${createdCount} lançamento(s) criado(s).`);
           } catch (error) {
             alert(error.message);
+          } finally {
+            button.disabled = false;
+            button.textContent = previousLabel;
           }
         });
         item.appendChild(button);
@@ -171,8 +185,9 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
+        const kind = kindSelect.value;
         const payload = {
-          kind: document.getElementById('kind').value,
+          kind,
           name: document.getElementById('name').value.trim(),
           value: parseDecimal(document.getElementById('value').value, 'Valor'),
           start_month: Number(document.getElementById('start-month').value),
@@ -180,12 +195,17 @@
           interval_months: Number(document.getElementById('interval-months').value),
           occurrences: Number(document.getElementById('occurrences').value),
           category_id: categorySelect.value ? Number(categorySelect.value) : null,
-          payment_method: document.getElementById('payment-method').value,
-          confirmed: document.getElementById('confirmed').value === 'true',
           notes: document.getElementById('notes').value.trim(),
         };
+        if (kind === 'expense') {
+          payload.payment_method = document.getElementById('payment-method').value;
+        } else {
+          payload.confirmed = document.getElementById('confirmed').value === 'true';
+        }
         await window.api.createRecurrence(payload);
         form.reset();
+        setInitialFormValues();
+        toggleKindFields();
         recurrenceModal.classList.remove('active');
         await loadRecurrences();
       } catch (error) {
@@ -201,9 +221,26 @@
       }
     });
 
-    const now = new Date();
-    document.getElementById('start-month').value = now.getMonth() + 1;
-    document.getElementById('start-year').value = now.getFullYear();
+    function toggleKindFields() {
+      const isExpense = kindSelect.value === 'expense';
+      paymentMethodField.style.display = isExpense ? '' : 'none';
+      confirmedField.style.display = isExpense ? 'none' : '';
+    }
+
+    function setInitialFormValues() {
+      const now = new Date();
+      document.getElementById('start-month').value = now.getMonth() + 1;
+      document.getElementById('start-year').value = now.getFullYear();
+      document.getElementById('interval-months').value = 1;
+      document.getElementById('occurrences').value = 12;
+      kindSelect.value = 'expense';
+      document.getElementById('payment-method').value = 'debit';
+      document.getElementById('confirmed').value = 'true';
+    }
+
+    kindSelect.addEventListener('change', toggleKindFields);
+    setInitialFormValues();
+    toggleKindFields();
 
     Promise.all([loadCategories(), loadRecurrences()]).catch(console.error);
 
@@ -214,4 +251,7 @@
   </script>
 </body>
 </html>
+
+
+
 

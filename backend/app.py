@@ -35,6 +35,7 @@ from .use_cases.list_recurrences import list_recurrences
 from .use_cases.list_goals import list_goals
 from .use_cases.apply_recurrence import apply_recurrence
 from .services.finance_service import generate_installments, calculate_invoice
+from .services.backup_service import BackupValidationError, export_backup_payload, restore_backup_payload
 
 
 app = Flask(__name__)
@@ -55,6 +56,34 @@ goal_repo = SQLiteGoalRepository(DB_PATH)
 @app.get("/health")
 def health() -> tuple[dict, int]:
     return {"status": "ok"}, 200
+
+
+@app.get("/backup/exportar")
+def export_backup():
+    payload = export_backup_payload(
+        cards=list_cards(card_repo),
+        categories=list_categories(category_repo),
+        expenses=list_expenses(expense_repo),
+        goals=list_goals(goal_repo),
+        incomes=list_incomes(income_repo),
+        installments=list_installments(installment_repo),
+        recurrences=list_recurrences(recurrence_repo),
+    )
+    return jsonify(payload)
+
+
+@app.post("/backup/restaurar")
+def restore_backup():
+    data = request.get_json(silent=True)
+    if data is None:
+        return jsonify({"error": "Envie um JSON de backup válido."}), 400
+    try:
+        counts = restore_backup_payload(DB_PATH, data)
+    except BackupValidationError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:
+        return jsonify({"error": "Não foi possível restaurar o backup. Verifique se o arquivo é válido."}), 500
+    return jsonify({"message": "Backup restaurado com sucesso.", "imported": counts}), 200
 
 
 @app.get("/categorias")

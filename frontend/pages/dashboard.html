@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -27,6 +27,7 @@
           <a href="reports.html">Relatórios</a>
           <a href="goals.html">Metas</a>
           <a href="recurrences.html">Recorrências</a>
+          <a href="backup.html">Backup</a>
         </nav>
       </div>
     </header>
@@ -64,11 +65,10 @@
     <div class="card">
       <ul id="goals-status" class="list"></ul>
     </div>
-    <section class="section-title">Backup</section>
+    <section class="section-title">Backup e restauração</section>
     <div class="card">
-      <p class="muted">Crie uma cópia local do banco SQLite.</p>
-      <button id="backup-button" class="button ghost">Gerar backup</button>
-      <div id="backup-result" class="muted"></div>
+      <p class="muted">Exporte ou restaure um backup completo dos seus dados.</p>
+      <a href="backup.html" class="button ghost" style="display: inline-flex; text-decoration: none;">Abrir backup</a>
     </div>
   </div>
   <script>
@@ -204,23 +204,9 @@
       navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     }
 
-    const backupButton = document.getElementById('backup-button');
-    const backupResult = document.getElementById('backup-result');
-
-    backupButton.addEventListener('click', async () => {
-      backupResult.textContent = 'Gerando backup...';
-      try {
-        const res = await fetch('http://localhost:5000/backup', { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || 'Erro ao gerar backup.');
-        }
-        backupResult.textContent = `Backup criado: ${data.backup}`;
-      } catch (error) {
-        backupResult.textContent = error.message;
-      }
-    });
   </script>
 </body>
 </html>
+
+
 

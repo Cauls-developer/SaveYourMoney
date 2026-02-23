@@ -124,4 +124,16 @@ contextBridge.exposeInMainWorld('api', {
     const res = await fetch(`${API_URL}/relatorios/mes?${params.toString()}`);
     return handleResponse(res);
   },
+  exportBackup: async () => {
+    const res = await fetch(`${API_URL}/backup/exportar`);
+    return handleResponse(res);
+  },
+  restoreBackup: async (data) => {
+    const res = await fetch(`${API_URL}/backup/restaurar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res);
+  },
 });
