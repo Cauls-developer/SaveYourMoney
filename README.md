@@ -23,9 +23,9 @@ SaveYourMoney-Installer.exe  # Instalador final para distribuição (raiz)
 ## Pré-requisitos
 
 - Windows (fluxo de instalador atual foi preparado para Windows/NSIS)
-- Python 3.10+
-- Node.js 18+
-- npm
+- Python 3.10+ e Node.js 18+ sao instalados automaticamente pelo `deploy-installer.bat` caso nao existam.
+- Se `winget` estiver disponivel, ele sera usado primeiro.
+- Sem `winget`, o script usa download direto oficial em modo silencioso.
 
 ## Setup de desenvolvimento
 
@@ -70,10 +70,13 @@ Use o script da raiz:
 
 Esse script executa automaticamente:
 
-1. Cria o `backend\.venv` (se não existir) e instala `backend\requirements.txt`
-2. Executa `npm install` no `frontend`
-3. Gera instalador com `npx electron-builder --win nsis`
-4. Copia o instalador mais recente de `frontend\dist\SaveYourMoney Setup *.exe` para:
+1. Instala Python (via `winget`) se não existir no computador
+2. Instala Node.js/npm (via `winget`) se não existir no computador
+3. Se `winget` nao estiver disponivel, aplica fallback com download direto oficial (Python installer + Node zip)
+4. Cria o `backend\.venv` (se não existir) e instala `backend\requirements.txt`
+5. Executa `npm install` no `frontend`
+6. Gera instalador com `npx electron-builder --win nsis`
+7. Copia o instalador mais recente de `frontend\dist\SaveYourMoney Setup *.exe` para:
    `SaveYourMoney-Installer.exe` (na raiz)
 
 Arquivo final para distribuição:
@@ -129,6 +132,9 @@ python -m pip install pytest
 
 - Erro no build do instalador:
   - Verifique se Node/npm estão instalados e acessíveis no terminal.
+  - Se aparecer `spawn EPERM` com `app-builder.exe`, o Windows provavelmente bloqueou execução.
+  - Libere o arquivo `frontend\node_modules\app-builder-bin\win\x64\app-builder.exe` no antivirus/Windows Security e rode:
+    `Unblock-File "frontend\node_modules\app-builder-bin\win\x64\app-builder.exe"`
 - Backend não sobe no app instalado:
   - Verifique o log em `AppData\...\logs\backend.log`.
 - `SaveYourMoney-Installer.exe` não atualizou:

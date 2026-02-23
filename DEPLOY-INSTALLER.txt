@@ -6,7 +6,10 @@ COMO GERAR NOVO INSTALLER (DEPLOY)
 1) Faça os ajustes no codigo.
 2) Na raiz do projeto, execute:
    deploy-installer.bat
-3) Ao final, o novo instalador sera atualizado em:
+3) O script instala automaticamente Python e Node.js se nao existirem:
+   - Primeiro tenta via winget.
+   - Se winget nao existir, usa download direto oficial em modo silencioso.
+4) Ao final, o novo instalador sera atualizado em:
    SaveYourMoney-Installer.exe
 
 ARTEFATOS DE BUILD
