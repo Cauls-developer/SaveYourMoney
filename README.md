@@ -75,9 +75,13 @@ Esse script executa automaticamente:
 2. Instala Node.js/npm (via `winget`) se não existir no computador
 3. Se `winget` nao estiver disponivel, aplica fallback com download direto oficial (Python installer + Node zip)
 4. Cria o `backend\.venv` (se não existir) e instala `backend\requirements.txt`
-5. Executa `npm install` no `frontend`
-6. Gera instalador com `npx electron-builder --win nsis`
-7. Copia o instalador mais recente de `frontend\dist\SaveYourMoney Setup *.exe` para:
+5. Empacota o backend em binário com PyInstaller (`backend\SaveYourMoney-Backend.exe`)
+   - Se o binário já existir, o build é pulado.
+   - Para forçar rebuild do backend:
+     `set FORCE_BACKEND_BUILD=1`
+6. Executa `npm install` no `frontend`
+7. Gera instalador com `npx electron-builder --win nsis`
+8. Copia o instalador mais recente de `frontend\dist\SaveYourMoney Setup *.exe` para:
    `SaveYourMoney-Installer.exe` (na raiz)
 
 Arquivo final para distribuição:
@@ -91,6 +95,7 @@ Referência rápida:
 ## Build manual (alternativa)
 
 ```powershell
+.\build-backend.bat
 cd frontend
 npm install
 npm run build:win
@@ -136,6 +141,11 @@ python -m pip install pytest
   - Se aparecer `spawn EPERM` com `app-builder.exe`, o Windows provavelmente bloqueou execução.
   - Libere o arquivo `frontend\node_modules\app-builder-bin\win\x64\app-builder.exe` no antivirus/Windows Security e rode:
     `Unblock-File "frontend\node_modules\app-builder-bin\win\x64\app-builder.exe"`
+- Erro no build do backend (PyInstaller):
+  - Garanta que `build-backend.bat` rodou sem erros.
+  - Confirme se existe `backend\SaveYourMoney-Backend.exe` após o build.
+  - Veja o log em `backend\build-backend.log`.
+  - Se o binário não iniciar, rode com `SAVEYOURMONEY_DEBUG=1` e verifique logs em `AppData\...\logs\backend.log`.
 - Backend não sobe no app instalado:
   - Verifique o log em `AppData\...\logs\backend.log`.
 - `SaveYourMoney-Installer.exe` não atualizou:

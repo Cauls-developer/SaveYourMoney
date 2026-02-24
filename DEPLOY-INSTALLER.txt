@@ -9,7 +9,13 @@ COMO GERAR NOVO INSTALLER (DEPLOY)
 3) O script instala automaticamente Python e Node.js se nao existirem:
    - Primeiro tenta via winget.
    - Se winget nao existir, usa download direto oficial em modo silencioso.
-4) Ao final, o novo instalador sera atualizado em:
+4) O script empacota o backend em binario (PyInstaller) e inclui no instalador.
+   - O app passa a preferir o binario do backend, evitando dependencia de Python no PC do usuario final.
+   - Se o binario ja existir, o build e pulado.
+   - Log do build do backend: backend\build-backend.log
+   - Para forcar rebuild do backend:
+     set FORCE_BACKEND_BUILD=1
+5) Ao final, o novo instalador sera atualizado em:
    SaveYourMoney-Installer.exe
 
 ARTEFATOS DE BUILD
