@@ -4,8 +4,21 @@ const API_URL = 'http://localhost:5000';
 
 async function handleResponse(response) {
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    const message = payload.error || 'Erro inesperado.';
+    let message = `Erro inesperado (${response.status}).`;
+    const bodyText = await response.text().catch(() => '');
+    if (bodyText) {
+      try {
+        const payload = JSON.parse(bodyText);
+        message = payload.error || payload.message || message;
+      } catch (parseError) {
+        const trimmed = bodyText.trim();
+        if (trimmed && !trimmed.startsWith('<')) {
+          message = trimmed;
+        }
+      }
+    } else if (response.statusText) {
+      message = `${response.statusText} (${response.status}).`;
+    }
     throw new Error(message);
   }
   return response.json();

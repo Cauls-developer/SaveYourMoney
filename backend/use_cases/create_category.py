@@ -3,6 +3,5 @@ from ..domain.entities import Category
 from ..repositories.base import Repository
 
 
-def create_category(repo: Repository[Category], name: str, description: str | None = None) -> Category:
-    category = Category(name=name, description=description)
+def create_category(repo: Repository[Category], category: Category) -> Category:
     return repo.add(category)
