@@ -178,19 +178,29 @@
 
     function renderCards(cards) {
       currentCards = cards;
-      cardsList.innerHTML = '';
-      cardSelect.innerHTML = '';
+      cardsList.replaceChildren();
+      cardSelect.replaceChildren();
       cards.forEach((card) => {
         const item = document.createElement('li');
-        item.innerHTML = `
-          <div>
-            <strong>${card.name}</strong>
-            <small>Limite ${formatCurrency(card.limit)} • ${card.brand || 'Sem bandeira'}</small>
-          </div>
-          <div class="inline-actions">
-            <button type="button" class="button secondary" data-edit="${card.id}">Editar</button>
-          </div>
-        `;
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = card.name;
+        const detail = document.createElement('small');
+        detail.textContent = `Limite ${formatCurrency(card.limit)} • ${card.brand || 'Sem bandeira'}`;
+        info.appendChild(title);
+        info.appendChild(detail);
+
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.edit = card.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(editButton);
+
+        item.appendChild(info);
+        item.appendChild(actions);
         cardsList.appendChild(item);
         const option = document.createElement('option');
         option.value = card.id;
@@ -267,7 +277,7 @@
       try {
         const data = await window.api.getInvoice(cardId, month, year);
         invoiceTotal.textContent = formatCurrency(data.total);
-        invoiceList.innerHTML = '';
+        invoiceList.replaceChildren();
         data.parcelas.forEach((item) => {
           const li = document.createElement('li');
           li.textContent = `${item.expense_name} - ${formatCurrency(item.value)} (${item.installment_number}/${item.total_installments})`;
@@ -284,7 +294,10 @@
 
     loadCards().catch((error) => {
       console.error(error);
-      cardsList.innerHTML = '<li>Erro ao carregar cartões.</li>';
+      cardsList.replaceChildren();
+      const item = document.createElement('li');
+      item.textContent = 'Erro ao carregar cartões.';
+      cardsList.appendChild(item);
     });
 
     const navToggle = document.getElementById('nav-toggle');

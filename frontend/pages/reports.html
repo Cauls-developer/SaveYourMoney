@@ -101,13 +101,13 @@
       reportExpenses.textContent = formatCurrency(report.total_expenses);
       reportIncomes.textContent = formatCurrency(report.total_incomes);
       reportBalance.textContent = formatCurrency(report.balance);
-      reportCategories.innerHTML = '';
+      reportCategories.replaceChildren();
       Object.entries(report.by_category || {}).forEach(([name, value]) => {
         const item = document.createElement('li');
         item.textContent = `${name} - ${formatCurrency(value)}`;
         reportCategories.appendChild(item);
       });
-      reportGoals.innerHTML = '';
+      reportGoals.replaceChildren();
       (report.goals || []).forEach((goal) => {
         const ok = goal.remaining >= 0;
         const status = ok ? 'Dentro do limite' : 'Estourou';

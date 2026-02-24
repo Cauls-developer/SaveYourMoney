@@ -199,7 +199,11 @@
 
     async function loadCategories() {
       const categories = await window.api.listCategories();
-      categorySelect.innerHTML = '<option value="">Sem categoria</option>';
+      categorySelect.replaceChildren();
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'Sem categoria';
+      categorySelect.appendChild(emptyOption);
       categories.forEach((category) => {
         const option = document.createElement('option');
         option.value = category.id;
@@ -210,19 +214,34 @@
 
     function renderRecurrences(recurrences) {
       currentRecurrences = recurrences;
-      list.innerHTML = '';
+      list.replaceChildren();
       recurrences.forEach((recurrence) => {
         const item = document.createElement('li');
-        item.innerHTML = `
-          <div>
-            <strong>${recurrence.name}</strong>
-            <small>${recurrence.kind} • a cada ${recurrence.interval_months} mês(es)</small>
-          </div>
-          <div class="inline-actions">
-            <button type="button" class="button secondary" data-apply="${recurrence.id}">Aplicar</button>
-            <button type="button" class="button secondary" data-edit="${recurrence.id}">Editar</button>
-          </div>
-        `;
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = recurrence.name;
+        const detail = document.createElement('small');
+        detail.textContent = `${recurrence.kind} • a cada ${recurrence.interval_months} mês(es)`;
+        info.appendChild(title);
+        info.appendChild(detail);
+
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const applyButton = document.createElement('button');
+        applyButton.type = 'button';
+        applyButton.className = 'button secondary';
+        applyButton.dataset.apply = recurrence.id;
+        applyButton.textContent = 'Aplicar';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.edit = recurrence.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(applyButton);
+        actions.appendChild(editButton);
+
+        item.appendChild(info);
+        item.appendChild(actions);
         list.appendChild(item);
       });
     }

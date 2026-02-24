@@ -153,7 +153,11 @@
     async function loadCategories() {
       const categories = await window.api.listCategories();
       categoriesById = new Map(categories.map((category) => [category.id, category.name]));
-      categorySelect.innerHTML = '<option value="">Todas as categorias</option>';
+      categorySelect.replaceChildren();
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'Todas as categorias';
+      categorySelect.appendChild(emptyOption);
       categories.forEach((category) => {
         const option = document.createElement('option');
         option.value = category.id;
@@ -163,31 +167,57 @@
     }
 
     function renderGoals(goals) {
-      goalsList.innerHTML = '';
+      goalsList.replaceChildren();
       currentGoals = goals;
       if (goals.length === 0) {
-        goalsList.innerHTML = '<li><small class="muted">Nenhuma meta cadastrada.</small></li>';
+        const item = document.createElement('li');
+        const small = document.createElement('small');
+        small.className = 'muted';
+        small.textContent = 'Nenhuma meta cadastrada.';
+        item.appendChild(small);
+        goalsList.appendChild(item);
         return;
       }
       goals.forEach((goal) => {
         const item = document.createElement('li');
         item.dataset.goalId = goal.id;
         const categoryLabel = goal.category_id ? (categoriesById.get(goal.category_id) || `Categoria #${goal.category_id}`) : 'Todas as categorias';
-        item.innerHTML = `
-          <div class="goal-row">
-            <div class="goal-head">
-              <strong>${goal.name}</strong>
-              <span class="pill">${goal.month}/${goal.year}</span>
-            </div>
-            <small>Limite ${formatCurrency(goal.limit_value)} • ${categoryLabel}</small>
-            <div class="progress-bar">
-              <div class="progress" style="width: 0%"></div>
-            </div>
-            <div class="inline-actions">
-              <button type="button" class="button secondary" data-edit="${goal.id}">Editar</button>
-            </div>
-          </div>
-        `;
+        const row = document.createElement('div');
+        row.className = 'goal-row';
+        const head = document.createElement('div');
+        head.className = 'goal-head';
+        const name = document.createElement('strong');
+        name.textContent = goal.name;
+        const period = document.createElement('span');
+        period.className = 'pill';
+        period.textContent = `${goal.month}/${goal.year}`;
+        head.appendChild(name);
+        head.appendChild(period);
+
+        const detail = document.createElement('small');
+        detail.textContent = `Limite ${formatCurrency(goal.limit_value)} • ${categoryLabel}`;
+
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        const progress = document.createElement('div');
+        progress.className = 'progress';
+        progress.style.width = '0%';
+        progressBar.appendChild(progress);
+
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.edit = goal.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(editButton);
+
+        row.appendChild(head);
+        row.appendChild(detail);
+        row.appendChild(progressBar);
+        row.appendChild(actions);
+        item.appendChild(row);
         goalsList.appendChild(item);
       });
     }

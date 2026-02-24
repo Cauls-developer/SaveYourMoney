@@ -128,60 +128,97 @@
         const recentIncomes = incomes.slice(-5).reverse();
         const expensesList = document.getElementById('recent-expenses');
         const incomesList = document.getElementById('recent-incomes');
-        expensesList.innerHTML = '';
-        incomesList.innerHTML = '';
+        expensesList.replaceChildren();
+        incomesList.replaceChildren();
         if (recentExpenses.length === 0) {
-          expensesList.innerHTML = '<li><small class="muted">Nenhum gasto neste mês.</small></li>';
+          const item = document.createElement('li');
+          const small = document.createElement('small');
+          small.className = 'muted';
+          small.textContent = 'Nenhum gasto neste mês.';
+          item.appendChild(small);
+          expensesList.appendChild(item);
         } else {
           recentExpenses.forEach((expense) => {
             const item = document.createElement('li');
-            item.innerHTML = `
-              <div>
-                <strong>${expense.name}</strong>
-                <small>${expense.month}/${expense.year}</small>
-              </div>
-              <strong>${formatCurrency(expense.value)}</strong>
-            `;
+            const info = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = expense.name;
+            const detail = document.createElement('small');
+            detail.textContent = `${expense.month}/${expense.year}`;
+            info.appendChild(title);
+            info.appendChild(detail);
+
+            const amount = document.createElement('strong');
+            amount.textContent = formatCurrency(expense.value);
+
+            item.appendChild(info);
+            item.appendChild(amount);
             expensesList.appendChild(item);
           });
         }
 
         if (recentIncomes.length === 0) {
-          incomesList.innerHTML = '<li><small class="muted">Nenhuma entrada neste mês.</small></li>';
+          const item = document.createElement('li');
+          const small = document.createElement('small');
+          small.className = 'muted';
+          small.textContent = 'Nenhuma entrada neste mês.';
+          item.appendChild(small);
+          incomesList.appendChild(item);
         } else {
           recentIncomes.forEach((income) => {
             const item = document.createElement('li');
             const label = income.confirmed ? 'Confirmado' : 'Previsto';
-            item.innerHTML = `
-              <div>
-                <strong>${income.name}</strong>
-                <small>${formatCurrency(income.value)}</small>
-              </div>
-              <span class="pill">${label}</span>
-            `;
+            const info = document.createElement('div');
+            const title = document.createElement('strong');
+            title.textContent = income.name;
+            const detail = document.createElement('small');
+            detail.textContent = formatCurrency(income.value);
+            info.appendChild(title);
+            info.appendChild(detail);
+
+            const pill = document.createElement('span');
+            pill.className = 'pill';
+            pill.textContent = label;
+
+            item.appendChild(info);
+            item.appendChild(pill);
             incomesList.appendChild(item);
           });
         }
 
         const goalsList = document.getElementById('goals-status');
-        goalsList.innerHTML = '';
+        goalsList.replaceChildren();
         if (report.goals && report.goals.length > 0) {
           report.goals.forEach((goal) => {
             const ok = goal.remaining >= 0;
             const progress = goal.limit_value > 0 ? Math.min((goal.spent / goal.limit_value) * 100, 100) : 0;
             const item = document.createElement('li');
-            item.innerHTML = `
-              <div class="goal-row">
-                <div class="goal-head">
-                  <strong>${goal.name}</strong>
-                  <span class="pill ${ok ? 'ok' : 'alert'}">${ok ? 'Dentro' : 'Estourou'}</span>
-                </div>
-                <small>${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)}</small>
-                <div class="progress-bar">
-                  <div class="progress" style="width: ${progress.toFixed(1)}%"></div>
-                </div>
-              </div>
-            `;
+            const row = document.createElement('div');
+            row.className = 'goal-row';
+            const head = document.createElement('div');
+            head.className = 'goal-head';
+            const name = document.createElement('strong');
+            name.textContent = goal.name;
+            const pill = document.createElement('span');
+            pill.className = `pill ${ok ? 'ok' : 'alert'}`;
+            pill.textContent = ok ? 'Dentro' : 'Estourou';
+            head.appendChild(name);
+            head.appendChild(pill);
+
+            const detail = document.createElement('small');
+            detail.textContent = `${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)}`;
+
+            const progressBar = document.createElement('div');
+            progressBar.className = 'progress-bar';
+            const progressEl = document.createElement('div');
+            progressEl.className = 'progress';
+            progressEl.style.width = `${progress.toFixed(1)}%`;
+            progressBar.appendChild(progressEl);
+
+            row.appendChild(head);
+            row.appendChild(detail);
+            row.appendChild(progressBar);
+            item.appendChild(row);
             goalsList.appendChild(item);
           });
         } else {

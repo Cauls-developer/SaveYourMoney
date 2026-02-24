@@ -231,21 +231,34 @@
     }
 
     function renderExpenses(expenses) {
-      list.innerHTML = '';
+      list.replaceChildren();
       currentExpenses = expenses;
       expenses.forEach((expense) => {
         const item = document.createElement('li');
         const recurringBadge = expense.recurrence_id ? '🔁 Recorrente' : 'Único';
-        item.innerHTML = `
-          <div>
-            <strong>${expense.name}</strong>
-            <small>${formatCurrency(expense.value)} • ${expense.month}/${expense.year}</small>
-          </div>
-          <div class="inline-actions">
-            <span class="pill">${recurringBadge}</span>
-            <button type="button" class="button secondary" data-edit="${expense.id}">Editar</button>
-          </div>
-        `;
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = expense.name;
+        const detail = document.createElement('small');
+        detail.textContent = `${formatCurrency(expense.value)} • ${expense.month}/${expense.year}`;
+        info.appendChild(title);
+        info.appendChild(detail);
+
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const badge = document.createElement('span');
+        badge.className = 'pill';
+        badge.textContent = recurringBadge;
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.edit = expense.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(badge);
+        actions.appendChild(editButton);
+
+        item.appendChild(info);
+        item.appendChild(actions);
         list.appendChild(item);
       });
     }
@@ -258,7 +271,11 @@
 
     async function loadCards() {
       const cards = await window.api.listCards();
-      cardSelect.innerHTML = '<option value="">Sem cartão</option>';
+      cardSelect.replaceChildren();
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'Sem cartão';
+      cardSelect.appendChild(emptyOption);
       cards.forEach((card) => {
         const option = document.createElement('option');
         option.value = card.id;
@@ -269,7 +286,11 @@
 
     async function loadCategories() {
       const categories = await window.api.listCategories();
-      categorySelect.innerHTML = '<option value="">Sem categoria</option>';
+      categorySelect.replaceChildren();
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = 'Sem categoria';
+      categorySelect.appendChild(emptyOption);
       categories.forEach((category) => {
         const option = document.createElement('option');
         option.value = category.id;
@@ -358,7 +379,10 @@
 
     Promise.all([loadExpenses(), loadCards(), loadCategories()]).catch((error) => {
       console.error(error);
-      list.innerHTML = '<li>Erro ao carregar gastos.</li>';
+      list.replaceChildren();
+      const item = document.createElement('li');
+      item.textContent = 'Erro ao carregar gastos.';
+      list.appendChild(item);
     });
 
     const navToggle = document.getElementById('nav-toggle');

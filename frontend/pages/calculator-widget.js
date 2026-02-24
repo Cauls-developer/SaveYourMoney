@@ -28,77 +28,132 @@
 
   const modal = document.createElement('div');
   modal.className = 'modal';
-  modal.innerHTML = `
-    <div class="modal-content calculator-panel calc-standard">
-      <div class="modal-header">
-        <h3>Calculadora</h3>
-        <button class="modal-close" type="button">×</button>
-      </div>
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content calculator-panel calc-standard';
 
-      <div class="calc-layout">
-        <div class="calc-left">
-          <div class="field">
-            <label for="calc-operation">Operação</label>
-            <select id="calc-operation">
-              <option value="soma">Soma</option>
-              <option value="subtracao">Subtração</option>
-              <option value="multiplicacao">Multiplicação</option>
-              <option value="divisao">Divisão</option>
-              <option value="juros_simples">Juros simples</option>
-              <option value="juros_compostos">Juros compostos</option>
-              <option value="parcelamento">Parcelamento</option>
-              <option value="desconto">Desconto</option>
-              <option value="rendimento_mensal">Rendimento mensal</option>
-              <option value="quitacao_divida">Quitação de dívida</option>
-            </select>
-          </div>
+  const modalHeader = document.createElement('div');
+  modalHeader.className = 'modal-header';
+  const modalTitle = document.createElement('h3');
+  modalTitle.textContent = 'Calculadora';
+  const closeButton = document.createElement('button');
+  closeButton.className = 'modal-close';
+  closeButton.type = 'button';
+  closeButton.textContent = '×';
+  modalHeader.appendChild(modalTitle);
+  modalHeader.appendChild(closeButton);
 
-          <div class="calc-screen" id="calc-screen">0</div>
+  const layout = document.createElement('div');
+  layout.className = 'calc-layout';
+  const left = document.createElement('div');
+  left.className = 'calc-left';
+  const right = document.createElement('div');
+  right.className = 'calc-right';
 
-          <div class="calc-targets" id="calc-targets"></div>
+  const operationField = document.createElement('div');
+  operationField.className = 'field';
+  const operationLabel = document.createElement('label');
+  operationLabel.setAttribute('for', 'calc-operation');
+  operationLabel.textContent = 'Operação';
+  const operationSelect = document.createElement('select');
+  operationSelect.id = 'calc-operation';
+  const operationOptions = [
+    ['soma', 'Soma'],
+    ['subtracao', 'Subtração'],
+    ['multiplicacao', 'Multiplicação'],
+    ['divisao', 'Divisão'],
+    ['juros_simples', 'Juros simples'],
+    ['juros_compostos', 'Juros compostos'],
+    ['parcelamento', 'Parcelamento'],
+    ['desconto', 'Desconto'],
+    ['rendimento_mensal', 'Rendimento mensal'],
+    ['quitacao_divida', 'Quitação de dívida'],
+  ];
+  operationOptions.forEach(([value, label]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    operationSelect.appendChild(option);
+  });
+  operationField.appendChild(operationLabel);
+  operationField.appendChild(operationSelect);
 
-          <div class="calc-keypad">
-            <button type="button" data-key="7">7</button>
-            <button type="button" data-key="8">8</button>
-            <button type="button" data-key="9">9</button>
-            <button type="button" data-action="del" class="calc-action">DEL</button>
+  const screen = document.createElement('div');
+  screen.className = 'calc-screen';
+  screen.id = 'calc-screen';
+  screen.textContent = '0';
 
-            <button type="button" data-key="4">4</button>
-            <button type="button" data-key="5">5</button>
-            <button type="button" data-key="6">6</button>
-            <button type="button" data-action="clear" class="calc-action">C</button>
+  const targets = document.createElement('div');
+  targets.className = 'calc-targets';
+  targets.id = 'calc-targets';
 
-            <button type="button" data-key="1">1</button>
-            <button type="button" data-key="2">2</button>
-            <button type="button" data-key="3">3</button>
-            <button type="button" data-key=",">,</button>
+  const keypad = document.createElement('div');
+  keypad.className = 'calc-keypad';
+  const keypadButtons = [
+    ['7', '7'],
+    ['8', '8'],
+    ['9', '9'],
+    ['del', 'DEL', 'calc-action', 'action'],
+    ['4', '4'],
+    ['5', '5'],
+    ['6', '6'],
+    ['clear', 'C', 'calc-action', 'action'],
+    ['1', '1'],
+    ['2', '2'],
+    ['3', '3'],
+    [',', ','],
+    ['0', '0', 'calc-zero'],
+    ['.', '.'],
+    ['negate', '+/-', null, 'action'],
+  ];
+  keypadButtons.forEach((definition) => {
+    const [value, label, className, kind] = definition;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    if (className) btn.className = className;
+    if (kind === 'action') {
+      btn.dataset.action = value;
+    } else {
+      btn.dataset.key = value;
+    }
+    btn.textContent = label;
+    keypad.appendChild(btn);
+  });
 
-            <button type="button" data-key="0" class="calc-zero">0</button>
-            <button type="button" data-key=".">.</button>
-            <button type="button" data-action="negate">+/-</button>
-          </div>
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+  actions.style.justifyContent = 'space-between';
+  const cancelButton = document.createElement('button');
+  cancelButton.type = 'button';
+  cancelButton.className = 'button secondary';
+  cancelButton.id = 'calc-cancel';
+  cancelButton.textContent = 'Fechar';
+  const submitButton = document.createElement('button');
+  submitButton.type = 'button';
+  submitButton.className = 'button';
+  submitButton.id = 'calc-submit';
+  submitButton.textContent = 'Calcular';
+  actions.appendChild(cancelButton);
+  actions.appendChild(submitButton);
 
-          <div class="modal-actions" style="justify-content: space-between;">
-            <button type="button" class="button secondary" id="calc-cancel">Fechar</button>
-            <button type="button" class="button" id="calc-submit">Calcular</button>
-          </div>
-        </div>
+  left.appendChild(operationField);
+  left.appendChild(screen);
+  left.appendChild(targets);
+  left.appendChild(keypad);
+  left.appendChild(actions);
 
-        <div class="calc-right">
-          <div class="calculator-answer" id="calc-answer">Selecione a operação e use o teclado.</div>
-        </div>
-      </div>
-    </div>
-  `;
+  const answer = document.createElement('div');
+  answer.className = 'calculator-answer';
+  answer.id = 'calc-answer';
+  answer.textContent = 'Selecione a operação e use o teclado.';
+  right.appendChild(answer);
 
-  const operation = modal.querySelector('#calc-operation');
-  const screen = modal.querySelector('#calc-screen');
-  const targets = modal.querySelector('#calc-targets');
-  const answer = modal.querySelector('#calc-answer');
-  const closeButton = modal.querySelector('.modal-close');
-  const cancelButton = modal.querySelector('#calc-cancel');
-  const submitButton = modal.querySelector('#calc-submit');
-  const keypad = modal.querySelector('.calc-keypad');
+  layout.appendChild(left);
+  layout.appendChild(right);
+  modalContent.appendChild(modalHeader);
+  modalContent.appendChild(layout);
+  modal.appendChild(modalContent);
+
+  const operation = operationSelect;
 
   const values = {
     a: '',
@@ -150,16 +205,18 @@
     const fields = currentFields();
     if (!fields.includes(activeField)) activeField = fields[0];
 
-    targets.innerHTML = '';
+    targets.replaceChildren();
     fields.forEach((field) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `calc-target${activeField === field ? ' active' : ''}`;
       btn.dataset.field = field;
-      btn.innerHTML = `
-        <strong>${fieldLabels[field]}</strong>
-        <span>${displayValueFor(field)}</span>
-      `;
+      const label = document.createElement('strong');
+      label.textContent = fieldLabels[field];
+      const value = document.createElement('span');
+      value.textContent = displayValueFor(field);
+      btn.appendChild(label);
+      btn.appendChild(value);
       targets.appendChild(btn);
     });
 

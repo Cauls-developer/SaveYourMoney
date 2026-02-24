@@ -103,20 +103,29 @@
     }
 
     function renderCategories(categories) {
-      list.innerHTML = '';
+      list.replaceChildren();
       currentCategories = categories;
       categories.forEach((category) => {
         const item = document.createElement('li');
-        const description = category.description ? ` - ${category.description}` : '';
-        item.innerHTML = `
-          <div>
-            <strong>${category.name}</strong>
-            <small>${description || 'Sem descrição'}</small>
-          </div>
-          <div class="inline-actions">
-            <button type="button" class="button secondary" data-edit="${category.id}">Editar</button>
-          </div>
-        `;
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = category.name;
+        const detail = document.createElement('small');
+        detail.textContent = category.description ? `- ${category.description}` : 'Sem descrição';
+        info.appendChild(title);
+        info.appendChild(detail);
+
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.edit = category.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(editButton);
+
+        item.appendChild(info);
+        item.appendChild(actions);
         list.appendChild(item);
       });
     }
@@ -179,7 +188,10 @@
 
     loadCategories().catch((error) => {
       console.error(error);
-      list.innerHTML = '<li>Erro ao carregar categorias.</li>';
+      list.replaceChildren();
+      const item = document.createElement('li');
+      item.textContent = 'Erro ao carregar categorias.';
+      list.appendChild(item);
     });
 
     const navToggle = document.getElementById('nav-toggle');
