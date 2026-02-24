@@ -18,11 +18,15 @@ function resolveBackendConfig() {
     ? path.join(process.resourcesPath, 'backend')
     : path.resolve(__dirname, '..', 'backend');
 
+  const backendExeName = process.platform === 'win32'
+    ? 'SaveYourMoney-Backend.exe'
+    : 'saveyourmoney-backend';
+  const backendExePath = path.join(backendRoot, backendExeName);
   const preferredPythonPath = path.join(backendRoot, '.venv', 'Scripts', 'python.exe');
   const pythonCommand = fs.existsSync(preferredPythonPath) ? preferredPythonPath : 'python';
   const projectRoot = app.isPackaged ? process.resourcesPath : path.resolve(__dirname, '..');
 
-  return { pythonCommand, projectRoot };
+  return { pythonCommand, projectRoot, backendExePath };
 }
 
 async function waitForBackendReady(timeoutMs = 60000, retryDelayMs = 500) {
@@ -43,7 +47,7 @@ async function waitForBackendReady(timeoutMs = 60000, retryDelayMs = 500) {
 }
 
 function startBackend() {
-  const { pythonCommand, projectRoot } = resolveBackendConfig();
+  const { pythonCommand, projectRoot, backendExePath } = resolveBackendConfig();
   const env = {
     ...process.env,
     PYTHONUNBUFFERED: '1',
@@ -57,7 +61,9 @@ function startBackend() {
   backendExitedBeforeReady = false;
   backendExitInfo = '';
 
-  backendProcess = spawn(pythonCommand, ['-m', 'backend.app'], {
+  const backendCommand = fs.existsSync(backendExePath) ? backendExePath : pythonCommand;
+  const backendArgs = fs.existsSync(backendExePath) ? [] : ['-m', 'backend.app'];
+  backendProcess = spawn(backendCommand, backendArgs, {
     cwd: projectRoot,
     env,
     windowsHide: true,

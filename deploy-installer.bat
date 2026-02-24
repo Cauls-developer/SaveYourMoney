@@ -101,17 +101,35 @@ if errorlevel 1 (
 :node_ready
 echo Node/npm prontos.
 
-echo [1/4] Preparando backend...
-if not exist "backend\.venv\Scripts\python.exe" (
-  call "%PYTHON_CMD%" -m venv "backend\.venv" || goto :error
+echo [1/5] Verificando backend (binario)...
+set "BACKEND_EXE=%ROOT%backend\SaveYourMoney-Backend.exe"
+set "BACKEND_BIN_UPTODATE=0"
+if defined FORCE_BACKEND_BUILD (
+  echo FORCE_BACKEND_BUILD definido. Ignorando cache do binario.
+) else (
+  if exist "%BACKEND_EXE%" (
+    set "BACKEND_BIN_UPTODATE=1"
+  )
 )
-call "backend\.venv\Scripts\python.exe" -m pip install -r "backend\requirements.txt" || goto :error
 
-echo [2/4] Preparando frontend...
+if defined FORCE_BACKEND_BUILD goto :build_backend
+if "%BACKEND_BIN_UPTODATE%"=="1" goto :skip_backend
+
+:build_backend
+echo [2/5] Empacotando backend (binario)...
+call "build-backend.bat" || goto :error_backend
+goto :after_backend
+
+:skip_backend
+echo Backend binario atualizado encontrado. Pulando build.
+
+:after_backend
+
+echo [3/5] Preparando frontend...
 cd /d "%ROOT%frontend"
 call %NPM_CMD% install || goto :error
 
-echo [3/4] Gerando instalador...
+echo [4/5] Gerando instalador...
 call %NPX_CMD% electron-builder --win nsis > "%BUILD_LOG%" 2>&1
 if errorlevel 1 (
   type "%BUILD_LOG%"
@@ -136,7 +154,7 @@ if errorlevel 1 (
 )
 type "%BUILD_LOG%"
 
-echo [4/4] Copiando instalador para a raiz...
+echo [5/5] Copiando instalador para a raiz...
 for /f "delims=" %%F in ('dir /b /o:-d "dist\SaveYourMoney Setup *.exe"') do (
   copy /Y "dist\%%F" "%ROOT%SaveYourMoney-Installer.exe" >nul
   goto :done
@@ -150,6 +168,15 @@ echo.
 echo Instalador pronto:
 echo %ROOT%SaveYourMoney-Installer.exe
 exit /b 0
+
+:error_backend
+echo.
+echo Falha ao empacotar o backend.
+if exist "%ROOT%backend\build-backend.log" (
+  echo Log do backend:
+  type "%ROOT%backend\build-backend.log"
+)
+goto :error
 
 :error
 echo.
