@@ -85,6 +85,14 @@
     const exportCsv = document.getElementById('export-csv');
     const exportPdf = document.getElementById('export-pdf');
 
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
+
     function formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     }
@@ -104,7 +112,13 @@
         const ok = goal.remaining >= 0;
         const status = ok ? 'Dentro do limite' : 'Estourou';
         const item = document.createElement('li');
-        item.innerHTML = `${goal.name} - ${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)} <span class="pill ${ok ? 'ok' : 'alert'}">${status}</span>`;
+        const summary = document.createElement('span');
+        summary.textContent = `${goal.name} - ${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)} `;
+        const pill = document.createElement('span');
+        pill.className = `pill ${ok ? 'ok' : 'alert'}`;
+        pill.textContent = status;
+        item.appendChild(summary);
+        item.appendChild(pill);
         reportGoals.appendChild(item);
       });
     }
@@ -121,7 +135,7 @@
       try {
         await loadReport(month, year);
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 

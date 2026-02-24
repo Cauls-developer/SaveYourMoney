@@ -76,6 +76,13 @@ def _parse_optional_bool(raw_value):
     raise ValueError("Valor booleano inválido.")
 
 
+def _pick(data: dict, *keys: str, default=None):
+    for key in keys:
+        if key in data:
+            return data[key]
+    return default
+
+
 def _parse_edit_scope(raw_value: str | None) -> str:
     scope = (raw_value or "this").strip().lower()
     if scope not in {"this", "future"}:
@@ -201,8 +208,8 @@ def put_category(category_id: int):
     if not existing:
         return jsonify({"error": "Categoria não encontrada."}), 404
     data = request.get_json(silent=True) or {}
-    name = data.get("name") or data.get("nome") or existing.name
-    description = data.get("description") or data.get("descricao") or existing.description
+    name = _pick(data, "name", "nome", default=existing.name)
+    description = _pick(data, "description", "descricao", default=existing.description)
     try:
         updated = Category(id=category_id, name=name, description=description)
     except ValueError as exc:
@@ -327,14 +334,14 @@ def put_expense(expense_id: int):
         scope = _parse_edit_scope(data.get("scope"))
         payload = Expense(
             id=expense_id,
-            name=data.get("name") or data.get("nome") or existing.name,
-            value=float(data.get("value") or data.get("valor") or existing.value),
-            month=int(data.get("month") or data.get("mes") or existing.month),
-            year=int(data.get("year") or data.get("ano") or existing.year),
-            category_id=data.get("category_id") or data.get("categoria_id") or existing.category_id,
+            name=_pick(data, "name", "nome", default=existing.name),
+            value=float(_pick(data, "value", "valor", default=existing.value)),
+            month=int(_pick(data, "month", "mes", default=existing.month)),
+            year=int(_pick(data, "year", "ano", default=existing.year)),
+            category_id=_pick(data, "category_id", "categoria_id", default=existing.category_id),
             recurrence_id=existing.recurrence_id,
-            payment_method=data.get("payment_method") or data.get("forma") or existing.payment_method,
-            notes=data.get("notes") or data.get("observacao") or existing.notes,
+            payment_method=_pick(data, "payment_method", "forma", default=existing.payment_method),
+            notes=_pick(data, "notes", "observacao", default=existing.notes),
         )
         expense_repo.update(payload)
         if scope == "future" and existing.recurrence_id:
@@ -383,12 +390,16 @@ def get_incomes():
 def post_income():
     data = request.get_json(silent=True) or {}
     try:
+        confirmed_raw = _pick(data, "confirmed", "confirmado", default=True)
+        confirmed = _parse_optional_bool(confirmed_raw)
+        if confirmed is None:
+            confirmed = True
         income = Income(
             name=data.get("name") or data.get("nome"),
             value=float(data.get("value") or data.get("valor")),
             month=int(data.get("month") or data.get("mes")),
             year=int(data.get("year") or data.get("ano")),
-            confirmed=bool(data.get("confirmed", data.get("confirmado", True))),
+            confirmed=confirmed,
             notes=data.get("notes") or data.get("observacao"),
         )
     except (TypeError, ValueError) as exc:
@@ -404,15 +415,15 @@ def put_income(income_id: int):
         return jsonify({"error": "Entrada não encontrada."}), 404
     data = request.get_json(silent=True) or {}
     try:
-        confirmed_raw = data.get("confirmed", data.get("confirmado"))
+        confirmed_raw = _pick(data, "confirmed", "confirmado", default=existing.confirmed)
         payload = Income(
             id=income_id,
-            name=data.get("name") or data.get("nome") or existing.name,
-            value=float(data.get("value") or data.get("valor") or existing.value),
-            month=int(data.get("month") or data.get("mes") or existing.month),
-            year=int(data.get("year") or data.get("ano") or existing.year),
+            name=_pick(data, "name", "nome", default=existing.name),
+            value=float(_pick(data, "value", "valor", default=existing.value)),
+            month=int(_pick(data, "month", "mes", default=existing.month)),
+            year=int(_pick(data, "year", "ano", default=existing.year)),
             confirmed=_parse_optional_bool(confirmed_raw) if confirmed_raw is not None else existing.confirmed,
-            notes=data.get("notes") or data.get("observacao") or existing.notes,
+            notes=_pick(data, "notes", "observacao", default=existing.notes),
         )
         income_repo.update(payload)
     except (TypeError, ValueError) as exc:
@@ -461,16 +472,16 @@ def put_card(card_id: int):
         return jsonify({"error": "Cartão não encontrado."}), 404
     data = request.get_json(silent=True) or {}
     try:
-        limit_raw = data.get("limit", data.get("limite"))
+        limit_raw = _pick(data, "limit", "limite", default=existing.limit)
         limit_value = float(limit_raw) if limit_raw not in (None, "") else existing.limit
         payload = Card(
             id=card_id,
-            name=data.get("name") or data.get("nome") or existing.name,
+            name=_pick(data, "name", "nome", default=existing.name),
             limit=limit_value,
-            bank=data.get("bank") or data.get("banco") or existing.bank,
-            brand=data.get("brand") or data.get("bandeira") or existing.brand,
-            closing_day=int(data.get("closing_day") or data.get("dia_fechamento") or existing.closing_day),
-            due_day=int(data.get("due_day") or data.get("dia_vencimento") or existing.due_day),
+            bank=_pick(data, "bank", "banco", default=existing.bank),
+            brand=_pick(data, "brand", "bandeira", default=existing.brand),
+            closing_day=int(_pick(data, "closing_day", "dia_fechamento", default=existing.closing_day)),
+            due_day=int(_pick(data, "due_day", "dia_vencimento", default=existing.due_day)),
         )
         card_repo.update(payload)
     except (TypeError, ValueError) as exc:
@@ -546,20 +557,20 @@ def put_recurrence(recurrence_id: int):
         return jsonify({"error": "Recorrência não encontrada."}), 404
     data = request.get_json(silent=True) or {}
     try:
-        confirmed_raw = data.get("confirmed")
+        confirmed_raw = _pick(data, "confirmed", default=existing.confirmed)
         payload = Recurrence(
             id=recurrence_id,
-            kind=data.get("kind") or data.get("tipo") or existing.kind,
-            name=data.get("name") or data.get("nome") or existing.name,
-            value=float(data.get("value") or data.get("valor") or existing.value),
-            start_month=int(data.get("start_month") or data.get("mes_inicio") or existing.start_month),
-            start_year=int(data.get("start_year") or data.get("ano_inicio") or existing.start_year),
-            interval_months=int(data.get("interval_months") or data.get("intervalo_meses") or existing.interval_months),
-            occurrences=int(data.get("occurrences") or data.get("ocorrencias") or existing.occurrences),
-            category_id=data.get("category_id") or data.get("categoria_id") or existing.category_id,
-            payment_method=data.get("payment_method") or data.get("forma") or existing.payment_method,
+            kind=_pick(data, "kind", "tipo", default=existing.kind),
+            name=_pick(data, "name", "nome", default=existing.name),
+            value=float(_pick(data, "value", "valor", default=existing.value)),
+            start_month=int(_pick(data, "start_month", "mes_inicio", default=existing.start_month)),
+            start_year=int(_pick(data, "start_year", "ano_inicio", default=existing.start_year)),
+            interval_months=int(_pick(data, "interval_months", "intervalo_meses", default=existing.interval_months)),
+            occurrences=int(_pick(data, "occurrences", "ocorrencias", default=existing.occurrences)),
+            category_id=_pick(data, "category_id", "categoria_id", default=existing.category_id),
+            payment_method=_pick(data, "payment_method", "forma", default=existing.payment_method),
             confirmed=_parse_optional_bool(confirmed_raw) if confirmed_raw is not None else existing.confirmed,
-            notes=data.get("notes") or data.get("observacao") or existing.notes,
+            notes=_pick(data, "notes", "observacao", default=existing.notes),
         )
         recurrence_repo.update(payload)
     except (TypeError, ValueError) as exc:
@@ -623,17 +634,13 @@ def put_goal(goal_id: int):
         return jsonify({"error": "Meta não encontrada."}), 404
     data = request.get_json(silent=True) or {}
     try:
-        if "category_id" in data or "categoria_id" in data:
-            category_id = data.get("category_id", data.get("categoria_id"))
-        else:
-            category_id = existing.category_id
         payload = Goal(
             id=goal_id,
-            name=data.get("name") or data.get("nome") or existing.name,
-            limit_value=float(data.get("limit_value") or data.get("valor_limite") or existing.limit_value),
-            month=int(data.get("month") or data.get("mes") or existing.month),
-            year=int(data.get("year") or data.get("ano") or existing.year),
-            category_id=category_id,
+            name=_pick(data, "name", "nome", default=existing.name),
+            limit_value=float(_pick(data, "limit_value", "valor_limite", default=existing.limit_value)),
+            month=int(_pick(data, "month", "mes", default=existing.month)),
+            year=int(_pick(data, "year", "ano", default=existing.year)),
+            category_id=_pick(data, "category_id", "categoria_id", default=existing.category_id),
         )
         goal_repo.update(payload)
     except (TypeError, ValueError) as exc:

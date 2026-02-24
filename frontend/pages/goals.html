@@ -91,6 +91,14 @@
     let currentGoals = [];
     let categoriesById = new Map();
 
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
+
     function formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     }
@@ -228,14 +236,16 @@
         };
         if (goalId) {
           await window.api.updateGoal(goalId, payload);
+          showToast('Meta atualizada com sucesso.');
         } else {
           await window.api.createGoal(payload);
+          showToast('Meta criada com sucesso.');
         }
         form.reset();
         closeModal();
         await loadGoals();
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 
@@ -253,10 +263,11 @@
       if (!confirmed) return;
       try {
         await window.api.deleteGoal(goalId);
+        showToast('Meta excluída com sucesso.');
         closeModal();
         await loadGoals();
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 

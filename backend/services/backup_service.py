@@ -271,6 +271,19 @@ def _optional_int(value: Any) -> int | None:
     return int(value)
 
 
+def _optional_bool(value: Any) -> bool | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "sim", "yes"}:
+        return True
+    if normalized in {"0", "false", "nao", "não", "no"}:
+        return False
+    raise ValueError("Valor booleano inválido.")
+
+
 def _parse_category(raw: Any) -> Category:
     item = _parse_record(raw, "categories")
     try:
@@ -320,13 +333,16 @@ def _parse_expense(raw: Any) -> Expense:
 def _parse_income(raw: Any) -> Income:
     item = _parse_record(raw, "income")
     try:
+        confirmed = _optional_bool(item.get("confirmed", True))
+        if confirmed is None:
+            confirmed = True
         return Income(
             id=_require_int(item, "id", "income"),
             name=str(item["name"]),
             value=_require_float(item, "value", "income"),
             month=_require_int(item, "month", "income"),
             year=_require_int(item, "year", "income"),
-            confirmed=bool(item.get("confirmed", True)),
+            confirmed=confirmed,
             notes=item.get("notes"),
         )
     except (TypeError, ValueError, KeyError) as exc:
@@ -335,9 +351,7 @@ def _parse_income(raw: Any) -> Income:
 
 def _parse_recurrence(raw: Any) -> Recurrence:
     item = _parse_record(raw, "recurringExpenses")
-    confirmed = item.get("confirmed")
-    if confirmed is not None:
-        confirmed = bool(confirmed)
+    confirmed = _optional_bool(item.get("confirmed"))
     try:
         return Recurrence(
             id=_require_int(item, "id", "recurringExpenses"),
