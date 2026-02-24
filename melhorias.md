@@ -122,6 +122,14 @@ Status: **executada em 24/02/2026**
 - Criar base de CI para lint e testes.
 - Adicionar testes de regressao para updates com `null` e booleanos.
 
+Status: **iniciada em 24/02/2026**
+
+- [x] `requirements-dev.txt` criado com ferramentas base.
+- [x] Testes de API adicionados para validacoes/erros/regressoes principais.
+- [x] Workflow de CI criado com lint critico + testes backend.
+- [ ] Ampliar cobertura para CRUD completo de todas as entidades.
+- [ ] Adicionar testes E2E do Electron.
+
 ### Fase 4 - Arquitetura e DX (5+ dias)
 
 - Quebrar `backend/app.py` em blueprints.
