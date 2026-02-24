@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request, send_file
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-from .domain.entities import Expense, Income, Card, Installment, Recurrence, Goal
+from .domain.entities import Category, Expense, Income, Card, Installment, Recurrence, Goal
 from .repositories.sqlite.categoria_repo import SQLiteCategoryRepository
 from .repositories.sqlite.entrada_repo import SQLiteIncomeRepository
 from .repositories.sqlite.gasto_repo import SQLiteExpenseRepository
@@ -34,7 +34,17 @@ from .use_cases.list_installments import list_installments
 from .use_cases.list_recurrences import list_recurrences
 from .use_cases.list_goals import list_goals
 from .use_cases.apply_recurrence import apply_recurrence
-from .services.finance_service import generate_installments, calculate_invoice
+from .services.finance_service import (
+    calculate_basic,
+    calculate_compound_interest,
+    calculate_discount,
+    calculate_invoice,
+    calculate_monthly_return,
+    calculate_simple_interest,
+    generate_installments,
+    simulate_debt_payoff,
+    simulate_installment,
+)
 from .services.backup_service import BackupValidationError, export_backup_payload, restore_backup_payload
 
 
@@ -53,9 +63,91 @@ recurrence_repo = SQLiteRecurrenceRepository(DB_PATH)
 goal_repo = SQLiteGoalRepository(DB_PATH)
 
 
+def _parse_optional_bool(raw_value):
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, bool):
+        return raw_value
+    normalized = str(raw_value).strip().lower()
+    if normalized in {"1", "true", "sim", "yes"}:
+        return True
+    if normalized in {"0", "false", "nao", "não", "no"}:
+        return False
+    raise ValueError("Valor booleano inválido.")
+
+
+def _parse_edit_scope(raw_value: str | None) -> str:
+    scope = (raw_value or "this").strip().lower()
+    if scope not in {"this", "future"}:
+        raise ValueError("Escopo de edição inválido. Use 'this' ou 'future'.")
+    return scope
+
+
+def _parse_cancel_scope(raw_value: str | None) -> str:
+    scope = (raw_value or "all").strip().lower()
+    if scope not in {"this", "future", "all"}:
+        raise ValueError("Escopo de cancelamento inválido. Use 'this', 'future' ou 'all'.")
+    return scope
+
+
 @app.get("/health")
 def health() -> tuple[dict, int]:
     return {"status": "ok"}, 200
+
+
+@app.post("/calculadora")
+def calculator():
+    data = request.get_json(silent=True) or {}
+    operation = (data.get("operation") or "").strip().lower()
+    try:
+        if operation in {"soma", "subtracao", "multiplicacao", "divisao"}:
+            a = float(data.get("a"))
+            b = float(data.get("b"))
+            result = calculate_basic(operation, a, b)
+            return jsonify({"operation": operation, "result": result}), 200
+        if operation == "juros_simples":
+            result = calculate_simple_interest(
+                principal=float(data.get("principal")),
+                monthly_rate_percent=float(data.get("rate")),
+                months=int(data.get("months")),
+            )
+            return jsonify({"operation": operation, "result": result}), 200
+        if operation == "juros_compostos":
+            result = calculate_compound_interest(
+                principal=float(data.get("principal")),
+                monthly_rate_percent=float(data.get("rate")),
+                months=int(data.get("months")),
+            )
+            return jsonify({"operation": operation, "result": result}), 200
+        if operation == "parcelamento":
+            result = simulate_installment(
+                principal=float(data.get("principal")),
+                monthly_rate_percent=float(data.get("rate")),
+                months=int(data.get("months")),
+            )
+            return jsonify({"operation": operation, "result": result}), 200
+        if operation == "desconto":
+            result = calculate_discount(
+                original_value=float(data.get("principal")),
+                discount_percent=float(data.get("rate")),
+            )
+            return jsonify({"operation": operation, "result": result}), 200
+        if operation == "rendimento_mensal":
+            result = calculate_monthly_return(
+                principal=float(data.get("principal")),
+                monthly_rate_percent=float(data.get("rate")),
+            )
+            return jsonify({"operation": operation, "result": result}), 200
+        if operation == "quitacao_divida":
+            result = simulate_debt_payoff(
+                debt_value=float(data.get("principal")),
+                payment_per_month=float(data.get("payment")),
+                monthly_rate_percent=float(data.get("rate")),
+            )
+            return jsonify({"operation": operation, "result": result}), 200
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Parâmetros inválidos para a calculadora. {exc}"}), 400
+    return jsonify({"error": "Operação de calculadora inválida."}), 400
 
 
 @app.get("/backup/exportar")
@@ -103,11 +195,45 @@ def post_category():
     return jsonify(asdict(category)), 201
 
 
+@app.put("/categorias/<int:category_id>")
+def put_category(category_id: int):
+    existing = category_repo.get(category_id)
+    if not existing:
+        return jsonify({"error": "Categoria não encontrada."}), 404
+    data = request.get_json(silent=True) or {}
+    name = data.get("name") or data.get("nome") or existing.name
+    description = data.get("description") or data.get("descricao") or existing.description
+    try:
+        updated = Category(id=category_id, name=name, description=description)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    category_repo.update(updated)
+    return jsonify(asdict(updated)), 200
+
+
+@app.delete("/categorias/<int:category_id>")
+def delete_category(category_id: int):
+    if not category_repo.get(category_id):
+        return jsonify({"error": "Categoria não encontrada."}), 404
+    has_expense_link = any(exp.category_id == category_id for exp in expense_repo.list())
+    has_recurrence_link = any(rec.category_id == category_id for rec in recurrence_repo.list())
+    has_goal_link = any(goal.category_id == category_id for goal in goal_repo.list())
+    if has_expense_link or has_recurrence_link or has_goal_link:
+        return jsonify({"error": "Não é possível excluir categoria com itens vinculados."}), 409
+    category_repo.delete(category_id)
+    return jsonify({"message": "Categoria excluída com sucesso."}), 200
+
+
 @app.get("/gastos")
 def get_expenses():
     month = request.args.get("mes", type=int)
     year = request.args.get("ano", type=int)
+    recurring_filter = (request.args.get("recorrente") or "todos").strip().lower()
     expenses = list_expenses(expense_repo, month=month, year=year)
+    if recurring_filter == "sim":
+        expenses = [item for item in expenses if item.recurrence_id is not None]
+    elif recurring_filter == "nao":
+        expenses = [item for item in expenses if item.recurrence_id is None]
     return jsonify([asdict(expense) for expense in expenses])
 
 
@@ -115,12 +241,46 @@ def get_expenses():
 def post_expense():
     data = request.get_json(silent=True) or {}
     try:
+        recurring_data = data.get("recurring") or {}
+        recurrence_id = None
+        if recurring_data.get("enabled"):
+            frequency = str(recurring_data.get("frequency") or "mensal").strip().lower()
+            interval_by_frequency = {"semanal": 1, "mensal": 1, "anual": 12}
+            interval_months = int(recurring_data.get("interval_months") or interval_by_frequency.get(frequency, 1))
+            if interval_months <= 0:
+                raise ValueError("interval_months deve ser maior que zero.")
+            occurrences = int(recurring_data.get("occurrences") or 12)
+            if recurring_data.get("end_month") and recurring_data.get("end_year"):
+                end_month = int(recurring_data.get("end_month"))
+                end_year = int(recurring_data.get("end_year"))
+                start_index = int(data.get("year") or data.get("ano")) * 12 + int(data.get("month") or data.get("mes"))
+                end_index = end_year * 12 + end_month
+                total_months = max(end_index - start_index, 0)
+                occurrences = max((total_months // interval_months) + 1, 1)
+            created_recurrence = create_recurrence(
+                recurrence_repo,
+                Recurrence(
+                    kind="expense",
+                    name=data.get("name") or data.get("nome"),
+                    value=float(data.get("value") or data.get("valor")),
+                    start_month=int(data.get("month") or data.get("mes")),
+                    start_year=int(data.get("year") or data.get("ano")),
+                    interval_months=interval_months,
+                    occurrences=occurrences,
+                    category_id=data.get("category_id") or data.get("categoria_id"),
+                    payment_method=data.get("payment_method") or data.get("forma") or "debit",
+                    notes=data.get("notes") or data.get("observacao"),
+                ),
+            )
+            recurrence_id = created_recurrence.id
+
         expense = Expense(
             name=data.get("name") or data.get("nome"),
             value=float(data.get("value") or data.get("valor")),
             month=int(data.get("month") or data.get("mes")),
             year=int(data.get("year") or data.get("ano")),
             category_id=data.get("category_id") or data.get("categoria_id"),
+            recurrence_id=recurrence_id,
             payment_method=data.get("payment_method") or data.get("forma") or "debit",
             notes=data.get("notes") or data.get("observacao"),
         )
@@ -157,6 +317,60 @@ def post_expense():
     return jsonify(asdict(expense)), 201
 
 
+@app.put("/gastos/<int:expense_id>")
+def put_expense(expense_id: int):
+    existing = expense_repo.get(expense_id)
+    if not existing:
+        return jsonify({"error": "Gasto não encontrado."}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        scope = _parse_edit_scope(data.get("scope"))
+        payload = Expense(
+            id=expense_id,
+            name=data.get("name") or data.get("nome") or existing.name,
+            value=float(data.get("value") or data.get("valor") or existing.value),
+            month=int(data.get("month") or data.get("mes") or existing.month),
+            year=int(data.get("year") or data.get("ano") or existing.year),
+            category_id=data.get("category_id") or data.get("categoria_id") or existing.category_id,
+            recurrence_id=existing.recurrence_id,
+            payment_method=data.get("payment_method") or data.get("forma") or existing.payment_method,
+            notes=data.get("notes") or data.get("observacao") or existing.notes,
+        )
+        expense_repo.update(payload)
+        if scope == "future" and existing.recurrence_id:
+            recurrence = recurrence_repo.get(existing.recurrence_id)
+            if recurrence:
+                recurrence.name = payload.name
+                recurrence.value = payload.value
+                recurrence.category_id = payload.category_id
+                recurrence.payment_method = payload.payment_method
+                recurrence.notes = payload.notes
+                recurrence_repo.update(recurrence)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Dados inválidos para gasto. {exc}"}), 400
+    return jsonify(asdict(payload)), 200
+
+
+@app.delete("/gastos/<int:expense_id>")
+def delete_expense(expense_id: int):
+    existing = expense_repo.get(expense_id)
+    if not existing:
+        return jsonify({"error": "Gasto não encontrado."}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        scope = _parse_cancel_scope(data.get("scope"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if existing.recurrence_id and scope in {"future", "all"}:
+        recurrence_repo.delete(existing.recurrence_id)
+        for expense in expense_repo.list():
+            if expense.recurrence_id == existing.recurrence_id:
+                expense_repo.delete(expense.id)
+        return jsonify({"message": "Recorrência cancelada com sucesso."}), 200
+    expense_repo.delete(expense_id)
+    return jsonify({"message": "Gasto excluído com sucesso."}), 200
+
+
 @app.get("/entradas")
 def get_incomes():
     month = request.args.get("mes", type=int)
@@ -183,6 +397,37 @@ def post_income():
     return jsonify(asdict(income)), 201
 
 
+@app.put("/entradas/<int:income_id>")
+def put_income(income_id: int):
+    existing = income_repo.get(income_id)
+    if not existing:
+        return jsonify({"error": "Entrada não encontrada."}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        confirmed_raw = data.get("confirmed", data.get("confirmado"))
+        payload = Income(
+            id=income_id,
+            name=data.get("name") or data.get("nome") or existing.name,
+            value=float(data.get("value") or data.get("valor") or existing.value),
+            month=int(data.get("month") or data.get("mes") or existing.month),
+            year=int(data.get("year") or data.get("ano") or existing.year),
+            confirmed=_parse_optional_bool(confirmed_raw) if confirmed_raw is not None else existing.confirmed,
+            notes=data.get("notes") or data.get("observacao") or existing.notes,
+        )
+        income_repo.update(payload)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Dados inválidos para entrada. {exc}"}), 400
+    return jsonify(asdict(payload)), 200
+
+
+@app.delete("/entradas/<int:income_id>")
+def delete_income(income_id: int):
+    if not income_repo.get(income_id):
+        return jsonify({"error": "Entrada não encontrada."}), 404
+    income_repo.delete(income_id)
+    return jsonify({"message": "Entrada excluída com sucesso."}), 200
+
+
 @app.get("/cartoes")
 def get_cards():
     cards = list_cards(card_repo)
@@ -193,9 +438,11 @@ def get_cards():
 def post_card():
     data = request.get_json(silent=True) or {}
     try:
+        limit_raw = data.get("limit", data.get("limite"))
+        limit_value = float(limit_raw) if limit_raw not in (None, "") else 0.0
         card = Card(
             name=data.get("name") or data.get("nome"),
-            limit=float(data.get("limit") or data.get("limite")),
+            limit=limit_value,
             bank=data.get("bank") or data.get("banco"),
             brand=data.get("brand") or data.get("bandeira"),
             closing_day=int(data.get("closing_day") or data.get("dia_fechamento") or 1),
@@ -205,6 +452,41 @@ def post_card():
         return jsonify({"error": f"Dados inválidos para cartão. {exc}"}), 400
     card = create_card(card_repo, card)
     return jsonify(asdict(card)), 201
+
+
+@app.put("/cartoes/<int:card_id>")
+def put_card(card_id: int):
+    existing = card_repo.get(card_id)
+    if not existing:
+        return jsonify({"error": "Cartão não encontrado."}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        limit_raw = data.get("limit", data.get("limite"))
+        limit_value = float(limit_raw) if limit_raw not in (None, "") else existing.limit
+        payload = Card(
+            id=card_id,
+            name=data.get("name") or data.get("nome") or existing.name,
+            limit=limit_value,
+            bank=data.get("bank") or data.get("banco") or existing.bank,
+            brand=data.get("brand") or data.get("bandeira") or existing.brand,
+            closing_day=int(data.get("closing_day") or data.get("dia_fechamento") or existing.closing_day),
+            due_day=int(data.get("due_day") or data.get("dia_vencimento") or existing.due_day),
+        )
+        card_repo.update(payload)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Dados inválidos para cartão. {exc}"}), 400
+    return jsonify(asdict(payload)), 200
+
+
+@app.delete("/cartoes/<int:card_id>")
+def delete_card(card_id: int):
+    if not card_repo.get(card_id):
+        return jsonify({"error": "Cartão não encontrado."}), 404
+    has_installments = any(installment.card_id == card_id for installment in installment_repo.list())
+    if has_installments:
+        return jsonify({"error": "Não é possível excluir cartão com parcelas vinculadas."}), 409
+    card_repo.delete(card_id)
+    return jsonify({"message": "Cartão excluído com sucesso."}), 200
 
 
 @app.get("/parcelas")
@@ -257,6 +539,45 @@ def post_recurrence():
     return jsonify(asdict(recurrence)), 201
 
 
+@app.put("/recorrencias/<int:recurrence_id>")
+def put_recurrence(recurrence_id: int):
+    existing = recurrence_repo.get(recurrence_id)
+    if not existing:
+        return jsonify({"error": "Recorrência não encontrada."}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        confirmed_raw = data.get("confirmed")
+        payload = Recurrence(
+            id=recurrence_id,
+            kind=data.get("kind") or data.get("tipo") or existing.kind,
+            name=data.get("name") or data.get("nome") or existing.name,
+            value=float(data.get("value") or data.get("valor") or existing.value),
+            start_month=int(data.get("start_month") or data.get("mes_inicio") or existing.start_month),
+            start_year=int(data.get("start_year") or data.get("ano_inicio") or existing.start_year),
+            interval_months=int(data.get("interval_months") or data.get("intervalo_meses") or existing.interval_months),
+            occurrences=int(data.get("occurrences") or data.get("ocorrencias") or existing.occurrences),
+            category_id=data.get("category_id") or data.get("categoria_id") or existing.category_id,
+            payment_method=data.get("payment_method") or data.get("forma") or existing.payment_method,
+            confirmed=_parse_optional_bool(confirmed_raw) if confirmed_raw is not None else existing.confirmed,
+            notes=data.get("notes") or data.get("observacao") or existing.notes,
+        )
+        recurrence_repo.update(payload)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Dados inválidos para recorrência. {exc}"}), 400
+    return jsonify(asdict(payload)), 200
+
+
+@app.delete("/recorrencias/<int:recurrence_id>")
+def delete_recurrence(recurrence_id: int):
+    if not recurrence_repo.get(recurrence_id):
+        return jsonify({"error": "Recorrência não encontrada."}), 404
+    recurrence_repo.delete(recurrence_id)
+    for expense in expense_repo.list():
+        if expense.recurrence_id == recurrence_id:
+            expense_repo.delete(expense.id)
+    return jsonify({"message": "Recorrência excluída com sucesso."}), 200
+
+
 @app.post("/recorrencias/aplicar")
 def apply_recurrence_endpoint():
     data = request.get_json(silent=True) or {}
@@ -293,6 +614,35 @@ def post_goal():
         return jsonify({"error": f"Dados inválidos para meta. {exc}"}), 400
     goal = create_goal(goal_repo, goal)
     return jsonify(asdict(goal)), 201
+
+
+@app.put("/metas/<int:goal_id>")
+def put_goal(goal_id: int):
+    existing = goal_repo.get(goal_id)
+    if not existing:
+        return jsonify({"error": "Meta não encontrada."}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        payload = Goal(
+            id=goal_id,
+            name=data.get("name") or data.get("nome") or existing.name,
+            limit_value=float(data.get("limit_value") or data.get("valor_limite") or existing.limit_value),
+            month=int(data.get("month") or data.get("mes") or existing.month),
+            year=int(data.get("year") or data.get("ano") or existing.year),
+            category_id=data.get("category_id") or data.get("categoria_id") or existing.category_id,
+        )
+        goal_repo.update(payload)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Dados inválidos para meta. {exc}"}), 400
+    return jsonify(asdict(payload)), 200
+
+
+@app.delete("/metas/<int:goal_id>")
+def delete_goal(goal_id: int):
+    if not goal_repo.get(goal_id):
+        return jsonify({"error": "Meta não encontrada."}), 404
+    goal_repo.delete(goal_id)
+    return jsonify({"message": "Meta excluída com sucesso."}), 200
 
 
 @app.get("/relatorios/mes")

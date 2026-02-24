@@ -96,8 +96,8 @@ def restore_backup_payload(db_path: str, payload: Any) -> dict[str, int]:
             conn.execute(
                 (
                     "INSERT INTO expenses "
-                    "(id, name, value, month, year, category_id, payment_method, notes) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                    "(id, name, value, month, year, category_id, recurrence_id, payment_method, notes) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 ),
                 (
                     expense.id,
@@ -106,6 +106,7 @@ def restore_backup_payload(db_path: str, payload: Any) -> dict[str, int]:
                     expense.month,
                     expense.year,
                     expense.category_id,
+                    expense.recurrence_id,
                     expense.payment_method,
                     expense.notes,
                 ),
@@ -308,6 +309,7 @@ def _parse_expense(raw: Any) -> Expense:
             month=_require_int(item, "month", "expenses"),
             year=_require_int(item, "year", "expenses"),
             category_id=_optional_int(item.get("category_id")),
+            recurrence_id=_optional_int(item.get("recurrence_id")),
             payment_method=str(item.get("payment_method") or "debit"),
             notes=item.get("notes"),
         )
@@ -407,6 +409,11 @@ def _validate_relationships(
     for recurrence in recurrences:
         if recurrence.category_id is not None and recurrence.category_id not in category_ids:
             raise BackupValidationError("Integridade inválida: recorrência referencia categoria inexistente.")
+
+    recurrence_ids = {item.id for item in recurrences}
+    for expense in expenses:
+        if expense.recurrence_id is not None and expense.recurrence_id not in recurrence_ids:
+            raise BackupValidationError("Integridade inválida: gasto recorrente referencia recorrência inexistente.")
 
     for goal in goals:
         if goal.category_id is not None and goal.category_id not in category_ids:

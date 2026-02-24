@@ -2,51 +2,6 @@
   • loaded configuration  file=package.json ("build" field)
   • description is missed in the package.json  appPackageFile=D:\developer\projects\SaveYourMoney\frontend\package.json
   • author is missed in the package.json  appPackageFile=D:\developer\projects\SaveYourMoney\frontend\package.json
-  ⨯ Cannot spawn D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-bin\win\x64\app-builder.exe: Error: spawn EPERM
-    at ChildProcess.spawn (node:internal/child_process:420:11)
-    at Object.spawn (node:child_process:762:9)
-    at spawn (D:\developer\projects\SaveYourMoney\frontend\node_modules\cross-spawn\index.js:12:24)
-    at doSpawn (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:177:18)
-    at D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:383:28
-    at new Promise (<anonymous>)
-    at runCommand (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:382:12)
-    at executeAppBuilder (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:401:12)
-    at rebuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\util\yarn.ts:169:19)
-    at installOrRebuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\util\yarn.ts:29:5)
-    at Packager.installAppDependencies (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:528:7)
-    at WinPackager.doPack (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\platformPackager.ts:223:5)
-    at WinPackager.pack (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\platformPackager.ts:140:5)
-    at Packager.doBuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:445:9)
-    at executeFinally (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\promise.ts:12:14)
-    at Packager._build (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:379:31)  failedTask=build stackTrace=Error: Cannot spawn D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-bin\win\x64\app-builder.exe: Error: spawn EPERM
-    at ChildProcess.spawn (node:internal/child_process:420:11)
-    at Object.spawn (node:child_process:762:9)
-    at spawn (D:\developer\projects\SaveYourMoney\frontend\node_modules\cross-spawn\index.js:12:24)
-    at doSpawn (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:177:18)
-    at D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:383:28
-    at new Promise (<anonymous>)
-    at runCommand (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:382:12)
-    at executeAppBuilder (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:401:12)
-    at rebuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\util\yarn.ts:169:19)
-    at installOrRebuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\util\yarn.ts:29:5)
-    at Packager.installAppDependencies (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:528:7)
-    at WinPackager.doPack (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\platformPackager.ts:223:5)
-    at WinPackager.pack (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\platformPackager.ts:140:5)
-    at Packager.doBuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:445:9)
-    at executeFinally (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\promise.ts:12:14)
-    at Packager._build (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:379:31)
-    at doSpawn (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:179:11)
-    at D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:383:28
-    at new Promise (<anonymous>)
-    at runCommand (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:382:12)
-    at executeAppBuilder (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\util.ts:401:12)
-    at rebuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\util\yarn.ts:169:19)
-    at installOrRebuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\util\yarn.ts:29:5)
-    at Packager.installAppDependencies (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:528:7)
-    at WinPackager.doPack (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\platformPackager.ts:223:5)
-    at WinPackager.pack (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\platformPackager.ts:140:5)
-    at Packager.doBuild (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:445:9)
-    at executeFinally (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\promise.ts:12:14)
-    at Packager._build (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:379:31)
-    at Packager.build (D:\developer\projects\SaveYourMoney\frontend\node_modules\app-builder-lib\src\packager.ts:340:12)
-    at executeFinally (D:\developer\projects\SaveYourMoney\frontend\node_modules\builder-util\src\promise.ts:12:14)
+  • packaging       platform=win32 arch=x64 electron=29.4.6 appOutDir=dist\win-unpacked
+  • building        target=nsis file=dist\SaveYourMoney Setup 0.1.0.exe archs=x64 oneClick=true perMachine=false
+  • building block map  blockMapFile=dist\SaveYourMoney Setup 0.1.0.exe.blockmap

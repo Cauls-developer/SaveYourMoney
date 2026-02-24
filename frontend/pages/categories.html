@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -40,10 +40,11 @@
   <div id="category-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Nova categoria</h3>
+        <h3 id="category-modal-title">Editar categoria</h3>
         <button class="modal-close" id="close-category-modal">×</button>
       </div>
       <form id="category-form" class="app-form">
+        <input id="category-id" type="hidden" />
         <div class="field">
           <label for="name">Nome</label>
           <input id="name" placeholder="Ex.: Alimentação" required />
@@ -52,23 +53,70 @@
           <label for="description">Descrição</label>
           <textarea id="description" placeholder="Detalhe a categoria"></textarea>
         </div>
-        <button type="submit" class="button">Salvar categoria</button>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-category">Cancelar</button>
+          <button type="button" class="button danger" id="delete-category">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
       </form>
     </div>
   </div>
+
   <script>
     const form = document.getElementById('category-form');
     const list = document.getElementById('categories-list');
     const categoryModal = document.getElementById('category-modal');
     const openCategoryModal = document.getElementById('open-category-modal');
     const closeCategoryModal = document.getElementById('close-category-modal');
+    const cancelCategory = document.getElementById('cancel-category');
+    const deleteCategoryButton = document.getElementById('delete-category');
+    const modalTitle = document.getElementById('category-modal-title');
+
+    let currentCategories = [];
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
+
+    function openModal(category) {
+      if (category) {
+        modalTitle.textContent = 'Editar categoria';
+        document.getElementById('category-id').value = category.id;
+        document.getElementById('name').value = category.name || '';
+        document.getElementById('description').value = category.description || '';
+        deleteCategoryButton.style.display = '';
+      } else {
+        modalTitle.textContent = 'Editar categoria';
+        form.reset();
+        document.getElementById('category-id').value = '';
+        deleteCategoryButton.style.display = 'none';
+      }
+      categoryModal.classList.add('active');
+    }
+
+    function closeModal() {
+      categoryModal.classList.remove('active');
+    }
 
     function renderCategories(categories) {
       list.innerHTML = '';
+      currentCategories = categories;
       categories.forEach((category) => {
         const item = document.createElement('li');
         const description = category.description ? ` - ${category.description}` : '';
-        item.textContent = `${category.name}${description}`;
+        item.innerHTML = `
+          <div>
+            <strong>${category.name}</strong>
+            <small>${description || 'Sem descrição'}</small>
+          </div>
+          <div class="inline-actions">
+            <button type="button" class="button secondary" data-edit="${category.id}">Editar</button>
+          </div>
+        `;
         list.appendChild(item);
       });
     }
@@ -80,26 +128,53 @@
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const id = Number(document.getElementById('category-id').value || 0);
       const payload = {
         name: document.getElementById('name').value.trim(),
         description: document.getElementById('description').value.trim(),
       };
       try {
-        await window.api.createCategory(payload);
-        form.reset();
-        categoryModal.classList.remove('active');
+        if (id) {
+          await window.api.updateCategory(id, payload);
+          showToast('Categoria atualizada com sucesso.');
+        } else {
+          await window.api.createCategory(payload);
+          showToast('Categoria criada com sucesso.');
+        }
+        closeModal();
         await loadCategories();
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 
-    openCategoryModal.addEventListener('click', () => categoryModal.classList.add('active'));
-    closeCategoryModal.addEventListener('click', () => categoryModal.classList.remove('active'));
-    categoryModal.addEventListener('click', (event) => {
-      if (event.target === categoryModal) {
-        categoryModal.classList.remove('active');
+    list.addEventListener('click', (event) => {
+      const editId = event.target.getAttribute('data-edit');
+      if (!editId) return;
+      const category = currentCategories.find((item) => item.id === Number(editId));
+      if (category) openModal(category);
+    });
+
+    deleteCategoryButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('category-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir este item?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteCategory(id);
+        showToast('Categoria excluída com sucesso.');
+        closeModal();
+        await loadCategories();
+      } catch (error) {
+        showToast(error.message, true);
       }
+    });
+
+    openCategoryModal.addEventListener('click', () => openModal(null));
+    closeCategoryModal.addEventListener('click', closeModal);
+    cancelCategory.addEventListener('click', closeModal);
+    categoryModal.addEventListener('click', (event) => {
+      if (event.target === categoryModal) closeModal();
     });
 
     loadCategories().catch((error) => {
@@ -112,9 +187,7 @@
       navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     }
   </script>
+  <script src="calculator-widget.js"></script>
 </body>
 </html>
-
-
-
 

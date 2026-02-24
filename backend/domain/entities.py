@@ -22,6 +22,7 @@ class Expense:
     month: int  # 1-12
     year: int
     category_id: Optional[int] = None
+    recurrence_id: Optional[int] = None
     payment_method: str = "debit"  # ou "credit"
     notes: Optional[str] = None
     id: Optional[int] = None

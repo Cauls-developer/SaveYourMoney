@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -63,17 +63,18 @@
   <div id="card-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Novo cartão</h3>
+        <h3 id="card-modal-title">Editar cartão</h3>
         <button class="modal-close" id="close-card-modal">×</button>
       </div>
       <form id="card-form" class="app-form">
+        <input id="card-id" type="hidden" />
         <div class="field">
           <label for="name">Nome</label>
           <input id="name" placeholder="Ex.: Nubank" required />
         </div>
         <div class="field">
-          <label for="limit">Limite</label>
-          <input id="limit" type="text" inputmode="decimal" placeholder="0,00" required />
+          <label for="limit">Limite (opcional)</label>
+          <input id="limit" type="text" inputmode="decimal" placeholder="Se vazio, será 0,00" />
         </div>
         <div class="field">
           <label for="bank">Banco</label>
@@ -91,7 +92,11 @@
           <label for="due-day">Dia de vencimento</label>
           <input id="due-day" type="number" min="1" max="31" value="1" />
         </div>
-        <button type="submit" class="button">Salvar cartão</button>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-card">Cancelar</button>
+          <button type="button" class="button danger" id="delete-card">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
       </form>
     </div>
   </div>
@@ -106,9 +111,21 @@
     const cardModal = document.getElementById('card-modal');
     const openCardModal = document.getElementById('open-card-modal');
     const closeCardModal = document.getElementById('close-card-modal');
+    const cancelCard = document.getElementById('cancel-card');
+    const deleteCardButton = document.getElementById('delete-card');
+
+    let currentCards = [];
 
     function formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
     }
 
     function parseDecimal(value, fieldName) {
@@ -116,14 +133,12 @@
       if (!raw) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
       }
-
       let normalized = raw.replace(/\s/g, '');
       if (normalized.includes(',') && normalized.includes('.')) {
         normalized = normalized.replace(/\./g, '').replace(',', '.');
       } else if (normalized.includes(',')) {
         normalized = normalized.replace(',', '.');
       }
-
       const parsed = Number.parseFloat(normalized);
       if (Number.isNaN(parsed)) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
@@ -131,12 +146,51 @@
       return parsed;
     }
 
+    function parseOptionalDecimal(value, defaultValue = 0) {
+      const raw = String(value || '').trim();
+      if (!raw) return defaultValue;
+      return parseDecimal(raw, 'Limite');
+    }
+
+    function openModal(card) {
+      if (card) {
+        document.getElementById('card-id').value = card.id;
+        document.getElementById('name').value = card.name || '';
+        document.getElementById('limit').value = String(card.limit || '');
+        document.getElementById('bank').value = card.bank || '';
+        document.getElementById('brand').value = card.brand || '';
+        document.getElementById('closing-day').value = card.closing_day || 1;
+        document.getElementById('due-day').value = card.due_day || 1;
+        deleteCardButton.style.display = '';
+      } else {
+        cardForm.reset();
+        document.getElementById('card-id').value = '';
+        document.getElementById('closing-day').value = 1;
+        document.getElementById('due-day').value = 1;
+        deleteCardButton.style.display = 'none';
+      }
+      cardModal.classList.add('active');
+    }
+
+    function closeModal() {
+      cardModal.classList.remove('active');
+    }
+
     function renderCards(cards) {
+      currentCards = cards;
       cardsList.innerHTML = '';
       cardSelect.innerHTML = '';
       cards.forEach((card) => {
         const item = document.createElement('li');
-        item.innerHTML = `${card.name} - Limite ${formatCurrency(card.limit)} <span class="pill">${card.brand || 'Cartão'}</span>`;
+        item.innerHTML = `
+          <div>
+            <strong>${card.name}</strong>
+            <small>Limite ${formatCurrency(card.limit)} • ${card.brand || 'Sem bandeira'}</small>
+          </div>
+          <div class="inline-actions">
+            <button type="button" class="button secondary" data-edit="${card.id}">Editar</button>
+          </div>
+        `;
         cardsList.appendChild(item);
         const option = document.createElement('option');
         option.value = card.id;
@@ -153,29 +207,56 @@
     cardForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
+        const id = Number(document.getElementById('card-id').value || 0);
         const payload = {
           name: document.getElementById('name').value.trim(),
-          limit: parseDecimal(document.getElementById('limit').value, 'Limite'),
+          limit: parseOptionalDecimal(document.getElementById('limit').value, 0),
           bank: document.getElementById('bank').value.trim(),
           brand: document.getElementById('brand').value.trim(),
           closing_day: Number(document.getElementById('closing-day').value),
           due_day: Number(document.getElementById('due-day').value),
         };
-        await window.api.createCard(payload);
-        cardForm.reset();
-        cardModal.classList.remove('active');
+        if (id) {
+          await window.api.updateCard(id, payload);
+          showToast('Cartão atualizado com sucesso.');
+        } else {
+          await window.api.createCard(payload);
+          showToast('Cartão criado com sucesso.');
+        }
+        closeModal();
         await loadCards();
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 
-    openCardModal.addEventListener('click', () => cardModal.classList.add('active'));
-    closeCardModal.addEventListener('click', () => cardModal.classList.remove('active'));
-    cardModal.addEventListener('click', (event) => {
-      if (event.target === cardModal) {
-        cardModal.classList.remove('active');
+    cardsList.addEventListener('click', (event) => {
+      const editId = event.target.getAttribute('data-edit');
+      if (!editId) return;
+      const card = currentCards.find((item) => item.id === Number(editId));
+      if (card) openModal(card);
+    });
+
+    deleteCardButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('card-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir este item?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteCard(id);
+        showToast('Cartão excluído com sucesso.');
+        closeModal();
+        await loadCards();
+      } catch (error) {
+        showToast(error.message, true);
       }
+    });
+
+    openCardModal.addEventListener('click', () => openModal(null));
+    closeCardModal.addEventListener('click', closeModal);
+    cancelCard.addEventListener('click', closeModal);
+    cardModal.addEventListener('click', (event) => {
+      if (event.target === cardModal) closeModal();
     });
 
     invoiceForm.addEventListener('submit', async (event) => {
@@ -193,7 +274,7 @@
           invoiceList.appendChild(li);
         });
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 
@@ -211,9 +292,7 @@
       navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     }
   </script>
+  <script src="calculator-widget.js"></script>
 </body>
 </html>
-
-
-
 

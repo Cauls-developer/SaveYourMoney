@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -41,10 +41,11 @@
   <div id="recurrence-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Nova recorrência</h3>
+        <h3>Editar recorrência</h3>
         <button class="modal-close" id="close-recurrence-modal">×</button>
       </div>
       <form id="recurrence-form" class="app-form">
+        <input id="recurrence-id" type="hidden" />
         <div class="field">
           <label for="kind">Tipo</label>
           <select id="kind">
@@ -100,7 +101,11 @@
           <label for="notes">Observação</label>
           <textarea id="notes"></textarea>
         </div>
-        <button type="submit" class="button">Salvar recorrência</button>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-recurrence">Cancelar</button>
+          <button type="button" class="button danger" id="delete-recurrence">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
       </form>
     </div>
   </div>
@@ -112,114 +117,39 @@
     const recurrenceModal = document.getElementById('recurrence-modal');
     const openRecurrenceModal = document.getElementById('open-recurrence-modal');
     const closeRecurrenceModal = document.getElementById('close-recurrence-modal');
+    const cancelRecurrence = document.getElementById('cancel-recurrence');
+    const deleteRecurrenceButton = document.getElementById('delete-recurrence');
     const kindSelect = document.getElementById('kind');
     const paymentMethodField = document.getElementById('payment-method').closest('.field');
     const confirmedField = document.getElementById('confirmed').closest('.field');
+
+    let currentRecurrences = [];
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
 
     function parseDecimal(value, fieldName) {
       const raw = String(value || '').trim();
       if (!raw) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
       }
-
       let normalized = raw.replace(/\s/g, '');
       if (normalized.includes(',') && normalized.includes('.')) {
         normalized = normalized.replace(/\./g, '').replace(',', '.');
       } else if (normalized.includes(',')) {
         normalized = normalized.replace(',', '.');
       }
-
       const parsed = Number.parseFloat(normalized);
       if (Number.isNaN(parsed)) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
       }
       return parsed;
     }
-
-    async function loadCategories() {
-      const categories = await window.api.listCategories();
-      categories.forEach((category) => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.name;
-        categorySelect.appendChild(option);
-      });
-    }
-
-    function renderRecurrences(recurrences) {
-      list.innerHTML = '';
-      recurrences.forEach((recurrence) => {
-        const item = document.createElement('li');
-        item.innerHTML = `${recurrence.name} - ${recurrence.kind} <span class="pill">${recurrence.start_month}/${recurrence.start_year}</span>`;
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'button';
-        button.textContent = 'Aplicar';
-        button.addEventListener('click', async () => {
-          const confirmedApply = window.confirm('Aplicar esta recorrência agora? Isso criará os lançamentos previstos.');
-          if (!confirmedApply) return;
-          button.disabled = true;
-          const previousLabel = button.textContent;
-          button.textContent = 'Aplicando...';
-          try {
-            const result = await window.api.applyRecurrence(recurrence.id);
-            const createdCount = (result.expenses || []).length + (result.incomes || []).length;
-            alert(`Recorrência aplicada! ${createdCount} lançamento(s) criado(s).`);
-          } catch (error) {
-            alert(error.message);
-          } finally {
-            button.disabled = false;
-            button.textContent = previousLabel;
-          }
-        });
-        item.appendChild(button);
-        list.appendChild(item);
-      });
-    }
-
-    async function loadRecurrences() {
-      const recurrences = await window.api.listRecurrences();
-      renderRecurrences(recurrences);
-    }
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      try {
-        const kind = kindSelect.value;
-        const payload = {
-          kind,
-          name: document.getElementById('name').value.trim(),
-          value: parseDecimal(document.getElementById('value').value, 'Valor'),
-          start_month: Number(document.getElementById('start-month').value),
-          start_year: Number(document.getElementById('start-year').value),
-          interval_months: Number(document.getElementById('interval-months').value),
-          occurrences: Number(document.getElementById('occurrences').value),
-          category_id: categorySelect.value ? Number(categorySelect.value) : null,
-          notes: document.getElementById('notes').value.trim(),
-        };
-        if (kind === 'expense') {
-          payload.payment_method = document.getElementById('payment-method').value;
-        } else {
-          payload.confirmed = document.getElementById('confirmed').value === 'true';
-        }
-        await window.api.createRecurrence(payload);
-        form.reset();
-        setInitialFormValues();
-        toggleKindFields();
-        recurrenceModal.classList.remove('active');
-        await loadRecurrences();
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
-    openRecurrenceModal.addEventListener('click', () => recurrenceModal.classList.add('active'));
-    closeRecurrenceModal.addEventListener('click', () => recurrenceModal.classList.remove('active'));
-    recurrenceModal.addEventListener('click', (event) => {
-      if (event.target === recurrenceModal) {
-        recurrenceModal.classList.remove('active');
-      }
-    });
 
     function toggleKindFields() {
       const isExpense = kindSelect.value === 'expense';
@@ -238,6 +168,147 @@
       document.getElementById('confirmed').value = 'true';
     }
 
+    function openModal(recurrence) {
+      if (recurrence) {
+        document.getElementById('recurrence-id').value = recurrence.id;
+        kindSelect.value = recurrence.kind;
+        document.getElementById('name').value = recurrence.name || '';
+        document.getElementById('value').value = String(recurrence.value || '');
+        document.getElementById('start-month').value = recurrence.start_month || '';
+        document.getElementById('start-year').value = recurrence.start_year || '';
+        document.getElementById('interval-months').value = recurrence.interval_months || 1;
+        document.getElementById('occurrences').value = recurrence.occurrences || 12;
+        categorySelect.value = recurrence.category_id || '';
+        document.getElementById('payment-method').value = recurrence.payment_method || 'debit';
+        document.getElementById('confirmed').value = String(Boolean(recurrence.confirmed));
+        document.getElementById('notes').value = recurrence.notes || '';
+        deleteRecurrenceButton.style.display = '';
+      } else {
+        form.reset();
+        document.getElementById('recurrence-id').value = '';
+        setInitialFormValues();
+        deleteRecurrenceButton.style.display = 'none';
+      }
+      toggleKindFields();
+      recurrenceModal.classList.add('active');
+    }
+
+    function closeModal() {
+      recurrenceModal.classList.remove('active');
+    }
+
+    async function loadCategories() {
+      const categories = await window.api.listCategories();
+      categorySelect.innerHTML = '<option value="">Sem categoria</option>';
+      categories.forEach((category) => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        categorySelect.appendChild(option);
+      });
+    }
+
+    function renderRecurrences(recurrences) {
+      currentRecurrences = recurrences;
+      list.innerHTML = '';
+      recurrences.forEach((recurrence) => {
+        const item = document.createElement('li');
+        item.innerHTML = `
+          <div>
+            <strong>${recurrence.name}</strong>
+            <small>${recurrence.kind} • a cada ${recurrence.interval_months} mês(es)</small>
+          </div>
+          <div class="inline-actions">
+            <button type="button" class="button secondary" data-apply="${recurrence.id}">Aplicar</button>
+            <button type="button" class="button secondary" data-edit="${recurrence.id}">Editar</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    async function loadRecurrences() {
+      const recurrences = await window.api.listRecurrences();
+      renderRecurrences(recurrences);
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const id = Number(document.getElementById('recurrence-id').value || 0);
+        const kind = kindSelect.value;
+        const payload = {
+          kind,
+          name: document.getElementById('name').value.trim(),
+          value: parseDecimal(document.getElementById('value').value, 'Valor'),
+          start_month: Number(document.getElementById('start-month').value),
+          start_year: Number(document.getElementById('start-year').value),
+          interval_months: Number(document.getElementById('interval-months').value),
+          occurrences: Number(document.getElementById('occurrences').value),
+          category_id: categorySelect.value ? Number(categorySelect.value) : null,
+          notes: document.getElementById('notes').value.trim(),
+        };
+        if (kind === 'expense') {
+          payload.payment_method = document.getElementById('payment-method').value;
+        } else {
+          payload.confirmed = document.getElementById('confirmed').value === 'true';
+        }
+        if (id) {
+          await window.api.updateRecurrence(id, payload);
+          showToast('Recorrência atualizada com sucesso.');
+        } else {
+          await window.api.createRecurrence(payload);
+          showToast('Recorrência criada com sucesso.');
+        }
+        closeModal();
+        await loadRecurrences();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    list.addEventListener('click', async (event) => {
+      const editId = event.target.getAttribute('data-edit');
+      if (editId) {
+        const recurrence = currentRecurrences.find((item) => item.id === Number(editId));
+        if (recurrence) openModal(recurrence);
+        return;
+      }
+      const applyId = event.target.getAttribute('data-apply');
+      if (!applyId) return;
+      const confirmedApply = window.confirm('Aplicar esta recorrência agora? Isso criará os lançamentos previstos.');
+      if (!confirmedApply) return;
+      try {
+        const result = await window.api.applyRecurrence(Number(applyId));
+        const createdCount = (result.expenses || []).length + (result.incomes || []).length;
+        showToast(`Recorrência aplicada! ${createdCount} lançamento(s) criado(s).`);
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    deleteRecurrenceButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('recurrence-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir este item?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteRecurrence(id);
+        showToast('Recorrência excluída com sucesso.');
+        closeModal();
+        await loadRecurrences();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    openRecurrenceModal.addEventListener('click', () => openModal(null));
+    closeRecurrenceModal.addEventListener('click', closeModal);
+    cancelRecurrence.addEventListener('click', closeModal);
+    recurrenceModal.addEventListener('click', (event) => {
+      if (event.target === recurrenceModal) closeModal();
+    });
+
     kindSelect.addEventListener('change', toggleKindFields);
     setInitialFormValues();
     toggleKindFields();
@@ -249,9 +320,7 @@
       navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     }
   </script>
+  <script src="calculator-widget.js"></script>
 </body>
 </html>
-
-
-
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -40,10 +40,11 @@
   <div id="income-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Nova entrada</h3>
+        <h3 id="income-modal-title">Editar entrada</h3>
         <button class="modal-close" id="close-income-modal">×</button>
       </div>
       <form id="income-form" class="app-form">
+        <input id="income-id" type="hidden" />
         <div class="field">
           <label for="name">Nome</label>
           <input id="name" placeholder="Ex.: Salário" required />
@@ -71,19 +72,36 @@
           <label for="notes">Observação</label>
           <textarea id="notes" placeholder="Detalhes adicionais"></textarea>
         </div>
-        <button type="submit" class="button">Salvar entrada</button>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-income">Cancelar</button>
+          <button type="button" class="button danger" id="delete-income">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
       </form>
     </div>
   </div>
+
   <script>
     const form = document.getElementById('income-form');
     const list = document.getElementById('incomes-list');
     const incomeModal = document.getElementById('income-modal');
     const openIncomeModal = document.getElementById('open-income-modal');
     const closeIncomeModal = document.getElementById('close-income-modal');
+    const cancelIncome = document.getElementById('cancel-income');
+    const deleteIncomeButton = document.getElementById('delete-income');
+
+    let currentIncomes = [];
 
     function formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
     }
 
     function parseDecimal(value, fieldName) {
@@ -91,14 +109,12 @@
       if (!raw) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
       }
-
       let normalized = raw.replace(/\s/g, '');
       if (normalized.includes(',') && normalized.includes('.')) {
         normalized = normalized.replace(/\./g, '').replace(',', '.');
       } else if (normalized.includes(',')) {
         normalized = normalized.replace(',', '.');
       }
-
       const parsed = Number.parseFloat(normalized);
       if (Number.isNaN(parsed)) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
@@ -106,12 +122,44 @@
       return parsed;
     }
 
+    function openModal(income) {
+      if (income) {
+        document.getElementById('income-id').value = income.id;
+        document.getElementById('name').value = income.name || '';
+        document.getElementById('value').value = String(income.value || '');
+        document.getElementById('month').value = income.month || '';
+        document.getElementById('year').value = income.year || '';
+        document.getElementById('confirmed').value = String(Boolean(income.confirmed));
+        document.getElementById('notes').value = income.notes || '';
+        deleteIncomeButton.style.display = '';
+      } else {
+        form.reset();
+        document.getElementById('income-id').value = '';
+        deleteIncomeButton.style.display = 'none';
+      }
+      incomeModal.classList.add('active');
+    }
+
+    function closeModal() {
+      incomeModal.classList.remove('active');
+    }
+
     function renderIncomes(incomes) {
       list.innerHTML = '';
+      currentIncomes = incomes;
       incomes.forEach((income) => {
         const status = income.confirmed ? 'Confirmado' : 'Previsto';
         const item = document.createElement('li');
-        item.innerHTML = `${income.name} - ${formatCurrency(income.value)} <span class="pill">${status}</span>`;
+        item.innerHTML = `
+          <div>
+            <strong>${income.name}</strong>
+            <small>${formatCurrency(income.value)} • ${income.month}/${income.year}</small>
+          </div>
+          <div class="inline-actions">
+            <span class="pill">${status}</span>
+            <button type="button" class="button secondary" data-edit="${income.id}">Editar</button>
+          </div>
+        `;
         list.appendChild(item);
       });
     }
@@ -125,6 +173,7 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
+        const id = Number(document.getElementById('income-id').value || 0);
         const payload = {
           name: document.getElementById('name').value.trim(),
           value: parseDecimal(document.getElementById('value').value, 'Valor'),
@@ -133,21 +182,47 @@
           confirmed: document.getElementById('confirmed').value === 'true',
           notes: document.getElementById('notes').value.trim(),
         };
-        await window.api.createIncome(payload);
-        form.reset();
-        incomeModal.classList.remove('active');
+        if (id) {
+          await window.api.updateIncome(id, payload);
+          showToast('Entrada atualizada com sucesso.');
+        } else {
+          await window.api.createIncome(payload);
+          showToast('Entrada criada com sucesso.');
+        }
+        closeModal();
         await loadIncomes();
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 
-    openIncomeModal.addEventListener('click', () => incomeModal.classList.add('active'));
-    closeIncomeModal.addEventListener('click', () => incomeModal.classList.remove('active'));
-    incomeModal.addEventListener('click', (event) => {
-      if (event.target === incomeModal) {
-        incomeModal.classList.remove('active');
+    list.addEventListener('click', (event) => {
+      const editId = event.target.getAttribute('data-edit');
+      if (!editId) return;
+      const income = currentIncomes.find((item) => item.id === Number(editId));
+      if (income) openModal(income);
+    });
+
+    deleteIncomeButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('income-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir este item?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteIncome(id);
+        showToast('Entrada excluída com sucesso.');
+        closeModal();
+        await loadIncomes();
+      } catch (error) {
+        showToast(error.message, true);
       }
+    });
+
+    openIncomeModal.addEventListener('click', () => openModal(null));
+    closeIncomeModal.addEventListener('click', closeModal);
+    cancelIncome.addEventListener('click', closeModal);
+    incomeModal.addEventListener('click', (event) => {
+      if (event.target === incomeModal) closeModal();
     });
 
     loadIncomes().catch((error) => {
@@ -160,9 +235,7 @@
       navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     }
   </script>
+  <script src="calculator-widget.js"></script>
 </body>
 </html>
-
-
-
 

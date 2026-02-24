@@ -29,6 +29,7 @@ def apply_recurrence(
                 month=competence.month,
                 year=competence.year,
                 category_id=recurrence.category_id,
+                recurrence_id=recurrence.id,
                 payment_method=recurrence.payment_method or "debit",
                 notes=recurrence.notes,
             )

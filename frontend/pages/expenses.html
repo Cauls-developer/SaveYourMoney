@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -32,7 +32,14 @@
       </div>
     </header>
     <div class="section-title">Gastos do mês</div>
-    <button id="open-expense-modal" class="button">Novo gasto</button>
+    <div class="inline-actions">
+      <button id="open-expense-modal" class="button">Novo gasto</button>
+      <select id="recurring-filter">
+        <option value="todos">Todos</option>
+        <option value="sim">Recorrentes</option>
+        <option value="nao">Não recorrentes</option>
+      </select>
+    </div>
     <section class="section-title">Lista de gastos</section>
     <ul id="expenses-list" class="list"></ul>
   </div>
@@ -40,10 +47,11 @@
   <div id="expense-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Novo gasto</h3>
+        <h3 id="expense-modal-title">Editar gasto</h3>
         <button class="modal-close" id="close-expense-modal">×</button>
       </div>
       <form id="expense-form" class="app-form">
+        <input id="expense-id" type="hidden" />
         <div class="field">
           <label for="name">Nome</label>
           <input id="name" placeholder="Ex.: Supermercado" required />
@@ -59,6 +67,12 @@
         <div class="field">
           <label for="year">Ano</label>
           <input id="year" type="number" min="2000" placeholder="Ano" required />
+        </div>
+        <div class="field">
+          <label for="category-id">Categoria</label>
+          <select id="category-id">
+            <option value="">Sem categoria</option>
+          </select>
         </div>
         <div class="field">
           <label for="payment-method">Forma</label>
@@ -77,11 +91,59 @@
           <label for="installments">Parcelas</label>
           <input id="installments" type="number" min="1" value="1" />
         </div>
+
+        <div class="field">
+          <label>
+            <input id="recurring-enabled" type="checkbox" />
+            Gasto recorrente
+          </label>
+        </div>
+
+        <div id="recurring-extra" style="display: none;">
+          <div class="field">
+            <label for="recurring-frequency">Frequência</label>
+            <select id="recurring-frequency">
+              <option value="mensal">Mensal</option>
+              <option value="semanal">Semanal</option>
+              <option value="anual">Anual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="recurring-end-month">Mês final (opcional)</label>
+            <input id="recurring-end-month" type="number" min="1" max="12" />
+          </div>
+          <div class="field">
+            <label for="recurring-end-year">Ano final (opcional)</label>
+            <input id="recurring-end-year" type="number" min="2000" />
+          </div>
+        </div>
+
         <div class="field">
           <label for="notes">Observação</label>
           <textarea id="notes" placeholder="Detalhes adicionais"></textarea>
         </div>
-        <button type="submit" class="button">Salvar gasto</button>
+
+        <div id="scope-edit-field" class="field" style="display: none;">
+          <label for="edit-scope">Ao editar recorrente</label>
+          <select id="edit-scope">
+            <option value="this">Editar apenas esta ocorrência</option>
+            <option value="future">Editar todas as futuras</option>
+          </select>
+        </div>
+
+        <div id="scope-delete-field" class="field" style="display: none;">
+          <label for="delete-scope">Ao excluir recorrente</label>
+          <select id="delete-scope">
+            <option value="this">Excluir apenas esta ocorrência</option>
+            <option value="future">Cancelar recorrência (futuras)</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-expense">Cancelar</button>
+          <button type="button" class="button danger" id="delete-expense">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
       </form>
     </div>
   </div>
@@ -89,9 +151,27 @@
     const form = document.getElementById('expense-form');
     const list = document.getElementById('expenses-list');
     const cardSelect = document.getElementById('card-id');
+    const categorySelect = document.getElementById('category-id');
     const expenseModal = document.getElementById('expense-modal');
     const openExpenseModal = document.getElementById('open-expense-modal');
     const closeExpenseModal = document.getElementById('close-expense-modal');
+    const cancelExpense = document.getElementById('cancel-expense');
+    const deleteExpenseButton = document.getElementById('delete-expense');
+    const recurringToggle = document.getElementById('recurring-enabled');
+    const recurringExtra = document.getElementById('recurring-extra');
+    const recurringFilter = document.getElementById('recurring-filter');
+    const editScopeField = document.getElementById('scope-edit-field');
+    const deleteScopeField = document.getElementById('scope-delete-field');
+
+    let currentExpenses = [];
+
+    function showToast(message, isError = false) {
+      const toast = document.createElement('div');
+      toast.className = `toast${isError ? ' error' : ''}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    }
 
     function formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -102,14 +182,12 @@
       if (!raw) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
       }
-
       let normalized = raw.replace(/\s/g, '');
       if (normalized.includes(',') && normalized.includes('.')) {
         normalized = normalized.replace(/\./g, '').replace(',', '.');
       } else if (normalized.includes(',')) {
         normalized = normalized.replace(',', '.');
       }
-
       const parsed = Number.parseFloat(normalized);
       if (Number.isNaN(parsed)) {
         throw new Error(`Informe um valor válido para ${fieldName}.`);
@@ -117,23 +195,70 @@
       return parsed;
     }
 
+    function toggleRecurringFields() {
+      recurringExtra.style.display = recurringToggle.checked ? '' : 'none';
+    }
+
+    function openModal(expense) {
+      if (expense) {
+        document.getElementById('expense-id').value = expense.id;
+        document.getElementById('name').value = expense.name || '';
+        document.getElementById('value').value = String(expense.value || '');
+        document.getElementById('month').value = expense.month || '';
+        document.getElementById('year').value = expense.year || '';
+        document.getElementById('category-id').value = expense.category_id || '';
+        document.getElementById('payment-method').value = expense.payment_method || 'debit';
+        document.getElementById('notes').value = expense.notes || '';
+        recurringToggle.checked = Boolean(expense.recurrence_id);
+        deleteExpenseButton.style.display = '';
+        editScopeField.style.display = expense.recurrence_id ? '' : 'none';
+        deleteScopeField.style.display = expense.recurrence_id ? '' : 'none';
+      } else {
+        form.reset();
+        document.getElementById('expense-id').value = '';
+        document.getElementById('installments').value = 1;
+        recurringToggle.checked = false;
+        deleteExpenseButton.style.display = 'none';
+        editScopeField.style.display = 'none';
+        deleteScopeField.style.display = 'none';
+      }
+      toggleRecurringFields();
+      expenseModal.classList.add('active');
+    }
+
+    function closeModal() {
+      expenseModal.classList.remove('active');
+    }
+
     function renderExpenses(expenses) {
       list.innerHTML = '';
+      currentExpenses = expenses;
       expenses.forEach((expense) => {
         const item = document.createElement('li');
-        item.innerHTML = `${expense.name} - ${formatCurrency(expense.value)} <span class="pill">${expense.month}/${expense.year}</span>`;
+        const recurringBadge = expense.recurrence_id ? '🔁 Recorrente' : 'Único';
+        item.innerHTML = `
+          <div>
+            <strong>${expense.name}</strong>
+            <small>${formatCurrency(expense.value)} • ${expense.month}/${expense.year}</small>
+          </div>
+          <div class="inline-actions">
+            <span class="pill">${recurringBadge}</span>
+            <button type="button" class="button secondary" data-edit="${expense.id}">Editar</button>
+          </div>
+        `;
         list.appendChild(item);
       });
     }
 
     async function loadExpenses() {
       const now = new Date();
-      const expenses = await window.api.listExpenses(now.getMonth() + 1, now.getFullYear());
+      const expenses = await window.api.listExpenses(now.getMonth() + 1, now.getFullYear(), recurringFilter.value);
       renderExpenses(expenses);
     }
 
     async function loadCards() {
       const cards = await window.api.listCards();
+      cardSelect.innerHTML = '<option value="">Sem cartão</option>';
       cards.forEach((card) => {
         const option = document.createElement('option');
         option.value = card.id;
@@ -142,40 +267,96 @@
       });
     }
 
+    async function loadCategories() {
+      const categories = await window.api.listCategories();
+      categorySelect.innerHTML = '<option value="">Sem categoria</option>';
+      categories.forEach((category) => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        categorySelect.appendChild(option);
+      });
+    }
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
+        const id = Number(document.getElementById('expense-id').value || 0);
         const payload = {
           name: document.getElementById('name').value.trim(),
           value: parseDecimal(document.getElementById('value').value, 'Valor'),
           month: Number(document.getElementById('month').value),
           year: Number(document.getElementById('year').value),
+          category_id: categorySelect.value ? Number(categorySelect.value) : null,
           payment_method: document.getElementById('payment-method').value,
           notes: document.getElementById('notes').value.trim(),
         };
+
         const cardId = cardSelect.value ? Number(cardSelect.value) : null;
         const installments = Number(document.getElementById('installments').value || 1);
         if (payload.payment_method === 'credit' && cardId && installments > 1) {
           payload.installments = { card_id: cardId, total: installments };
         }
-        await window.api.createExpense(payload);
-        form.reset();
-        expenseModal.classList.remove('active');
+
+        if (!id && recurringToggle.checked) {
+          payload.recurring = {
+            enabled: true,
+            frequency: document.getElementById('recurring-frequency').value,
+            end_month: Number(document.getElementById('recurring-end-month').value || 0) || null,
+            end_year: Number(document.getElementById('recurring-end-year').value || 0) || null,
+          };
+        }
+
+        if (id) {
+          payload.scope = document.getElementById('edit-scope').value;
+          await window.api.updateExpense(id, payload);
+          showToast('Gasto atualizado com sucesso.');
+        } else {
+          await window.api.createExpense(payload);
+          showToast('Gasto criado com sucesso.');
+        }
+
+        closeModal();
         await loadExpenses();
       } catch (error) {
-        alert(error.message);
+        showToast(error.message, true);
       }
     });
 
-    openExpenseModal.addEventListener('click', () => expenseModal.classList.add('active'));
-    closeExpenseModal.addEventListener('click', () => expenseModal.classList.remove('active'));
+    list.addEventListener('click', (event) => {
+      const editId = event.target.getAttribute('data-edit');
+      if (!editId) return;
+      const expense = currentExpenses.find((item) => item.id === Number(editId));
+      if (expense) openModal(expense);
+    });
+
+    deleteExpenseButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('expense-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir este item?');
+      if (!confirmed) return;
+      try {
+        const scope = document.getElementById('delete-scope').value;
+        await window.api.deleteExpense(id, scope);
+        showToast('Gasto excluído com sucesso.');
+        closeModal();
+        await loadExpenses();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    recurringToggle.addEventListener('change', toggleRecurringFields);
+    recurringFilter.addEventListener('change', () => loadExpenses().catch(console.error));
+
+    openExpenseModal.addEventListener('click', () => openModal(null));
+    closeExpenseModal.addEventListener('click', closeModal);
+    cancelExpense.addEventListener('click', closeModal);
     expenseModal.addEventListener('click', (event) => {
-      if (event.target === expenseModal) {
-        expenseModal.classList.remove('active');
-      }
+      if (event.target === expenseModal) closeModal();
     });
 
-    Promise.all([loadExpenses(), loadCards()]).catch((error) => {
+    Promise.all([loadExpenses(), loadCards(), loadCategories()]).catch((error) => {
       console.error(error);
       list.innerHTML = '<li>Erro ao carregar gastos.</li>';
     });
@@ -185,9 +366,7 @@
       navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
     }
   </script>
+  <script src="calculator-widget.js"></script>
 </body>
 </html>
-
-
-
 
