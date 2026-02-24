@@ -155,13 +155,27 @@ if errorlevel 1 (
 type "%BUILD_LOG%"
 
 echo [5/5] Copiando instalador para a raiz...
+set "INSTALLER_SRC="
 for /f "delims=" %%F in ('dir /b /o:-d "dist\SaveYourMoney Setup *.exe"') do (
-  copy /Y "dist\%%F" "%ROOT%SaveYourMoney-Installer.exe" >nul
-  goto :done
+  set "INSTALLER_SRC=dist\%%F"
+  goto :copy_installer
 )
 
 echo Nenhum instalador .exe encontrado em frontend\dist.
 goto :error
+
+:copy_installer
+set "INSTALLER_DST=%ROOT%SaveYourMoney-Installer.exe"
+if exist "%INSTALLER_DST%" (
+  del /f /q "%INSTALLER_DST%" >nul 2>&1
+)
+copy /Y "%INSTALLER_SRC%" "%INSTALLER_DST%" >nul
+if errorlevel 1 (
+  echo.
+  echo Falha ao sobrescrever "%INSTALLER_DST%".
+  echo Feche o instalador se estiver aberto e tente novamente.
+  goto :error
+)
 
 :done
 echo.

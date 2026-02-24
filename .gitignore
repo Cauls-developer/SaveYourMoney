@@ -16,6 +16,8 @@ frontend/dist/
 *.dll
 *.blockmap
 *.asar
+backend/build/
+backend/build-backend.log
 
 # Local data
 *.db
