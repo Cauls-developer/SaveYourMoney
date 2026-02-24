@@ -623,13 +623,17 @@ def put_goal(goal_id: int):
         return jsonify({"error": "Meta não encontrada."}), 404
     data = request.get_json(silent=True) or {}
     try:
+        if "category_id" in data or "categoria_id" in data:
+            category_id = data.get("category_id", data.get("categoria_id"))
+        else:
+            category_id = existing.category_id
         payload = Goal(
             id=goal_id,
             name=data.get("name") or data.get("nome") or existing.name,
             limit_value=float(data.get("limit_value") or data.get("valor_limite") or existing.limit_value),
             month=int(data.get("month") or data.get("mes") or existing.month),
             year=int(data.get("year") or data.get("ano") or existing.year),
-            category_id=data.get("category_id") or data.get("categoria_id") or existing.category_id,
+            category_id=category_id,
         )
         goal_repo.update(payload)
     except (TypeError, ValueError) as exc:

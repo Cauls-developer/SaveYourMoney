@@ -41,10 +41,11 @@
   <div id="goal-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Nova meta</h3>
+        <h3 id="goal-modal-title">Nova meta</h3>
         <button class="modal-close" id="close-goal-modal">×</button>
       </div>
       <form id="goal-form" class="app-form">
+        <input id="goal-id" type="hidden" />
         <div class="field">
           <label for="name">Nome</label>
           <input id="name" placeholder="Ex.: Gastos do mês" required />
@@ -67,7 +68,11 @@
             <option value="">Todas as categorias</option>
           </select>
         </div>
-        <button type="submit" class="button">Salvar meta</button>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-goal">Cancelar</button>
+          <button type="button" class="button danger" id="delete-goal">Excluir</button>
+          <button type="submit" class="button">Salvar meta</button>
+        </div>
       </form>
     </div>
   </div>
@@ -79,6 +84,12 @@
     const goalModal = document.getElementById('goal-modal');
     const openGoalModal = document.getElementById('open-goal-modal');
     const closeGoalModal = document.getElementById('close-goal-modal');
+    const cancelGoal = document.getElementById('cancel-goal');
+    const deleteGoalButton = document.getElementById('delete-goal');
+    const modalTitle = document.getElementById('goal-modal-title');
+
+    let currentGoals = [];
+    let categoriesById = new Map();
 
     function formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -104,8 +115,37 @@
       return parsed;
     }
 
+    function openModal(goal) {
+      if (goal) {
+        modalTitle.textContent = 'Editar meta';
+        document.getElementById('goal-id').value = goal.id;
+        document.getElementById('name').value = goal.name || '';
+        document.getElementById('limit-value').value = String(goal.limit_value || '').replace('.', ',');
+        document.getElementById('month').value = goal.month || '';
+        document.getElementById('year').value = goal.year || '';
+        categorySelect.value = goal.category_id ?? '';
+        deleteGoalButton.style.display = '';
+      } else {
+        modalTitle.textContent = 'Nova meta';
+        form.reset();
+        document.getElementById('goal-id').value = '';
+        const now = new Date();
+        document.getElementById('month').value = now.getMonth() + 1;
+        document.getElementById('year').value = now.getFullYear();
+        categorySelect.value = '';
+        deleteGoalButton.style.display = 'none';
+      }
+      goalModal.classList.add('active');
+    }
+
+    function closeModal() {
+      goalModal.classList.remove('active');
+    }
+
     async function loadCategories() {
       const categories = await window.api.listCategories();
+      categoriesById = new Map(categories.map((category) => [category.id, category.name]));
+      categorySelect.innerHTML = '<option value="">Todas as categorias</option>';
       categories.forEach((category) => {
         const option = document.createElement('option');
         option.value = category.id;
@@ -116,6 +156,7 @@
 
     function renderGoals(goals) {
       goalsList.innerHTML = '';
+      currentGoals = goals;
       if (goals.length === 0) {
         goalsList.innerHTML = '<li><small class="muted">Nenhuma meta cadastrada.</small></li>';
         return;
@@ -123,7 +164,7 @@
       goals.forEach((goal) => {
         const item = document.createElement('li');
         item.dataset.goalId = goal.id;
-        const categoryLabel = goal.category_id ? `Categoria #${goal.category_id}` : 'Todas as categorias';
+        const categoryLabel = goal.category_id ? (categoriesById.get(goal.category_id) || `Categoria #${goal.category_id}`) : 'Todas as categorias';
         item.innerHTML = `
           <div class="goal-row">
             <div class="goal-head">
@@ -133,6 +174,9 @@
             <small>Limite ${formatCurrency(goal.limit_value)} • ${categoryLabel}</small>
             <div class="progress-bar">
               <div class="progress" style="width: 0%"></div>
+            </div>
+            <div class="inline-actions">
+              <button type="button" class="button secondary" data-edit="${goal.id}">Editar</button>
             </div>
           </div>
         `;
@@ -174,6 +218,7 @@
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
+        const goalId = Number(document.getElementById('goal-id').value || 0);
         const payload = {
           name: document.getElementById('name').value.trim(),
           limit_value: parseDecimal(document.getElementById('limit-value').value, 'Valor limite'),
@@ -181,26 +226,48 @@
           year: Number(document.getElementById('year').value),
           category_id: categorySelect.value ? Number(categorySelect.value) : null,
         };
-        await window.api.createGoal(payload);
+        if (goalId) {
+          await window.api.updateGoal(goalId, payload);
+        } else {
+          await window.api.createGoal(payload);
+        }
         form.reset();
-        goalModal.classList.remove('active');
+        closeModal();
         await loadGoals();
       } catch (error) {
         alert(error.message);
       }
     });
 
-    openGoalModal.addEventListener('click', () => goalModal.classList.add('active'));
-    closeGoalModal.addEventListener('click', () => goalModal.classList.remove('active'));
-    goalModal.addEventListener('click', (event) => {
-      if (event.target === goalModal) {
-        goalModal.classList.remove('active');
+    goalsList.addEventListener('click', (event) => {
+      const editId = event.target.getAttribute('data-edit');
+      if (!editId) return;
+      const goal = currentGoals.find((item) => item.id === Number(editId));
+      if (goal) openModal(goal);
+    });
+
+    deleteGoalButton.addEventListener('click', async () => {
+      const goalId = Number(document.getElementById('goal-id').value || 0);
+      if (!goalId) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir esta meta?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteGoal(goalId);
+        closeModal();
+        await loadGoals();
+      } catch (error) {
+        alert(error.message);
       }
     });
 
-    const now = new Date();
-    document.getElementById('month').value = now.getMonth() + 1;
-    document.getElementById('year').value = now.getFullYear();
+    openGoalModal.addEventListener('click', () => openModal(null));
+    closeGoalModal.addEventListener('click', closeModal);
+    cancelGoal.addEventListener('click', closeModal);
+    goalModal.addEventListener('click', (event) => {
+      if (event.target === goalModal) {
+        closeModal();
+      }
+    });
 
     Promise.all([loadCategories(), loadGoals()]).catch(console.error);
 
