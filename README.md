@@ -5,6 +5,7 @@ Aplicativo desktop para controle de finanças pessoais, com backend em Python (F
 ## Visão geral
 
 - Backend local com API HTTP em `http://127.0.0.1:5000`
+- Documentação Swagger em `http://127.0.0.1:5000/docs` (spec em `/openapi.yaml`)
 - Frontend desktop em Electron
 - Banco local SQLite (`saveyourmoney.db`)
 - Geração de instalador Windows (`.exe`) com `electron-builder`

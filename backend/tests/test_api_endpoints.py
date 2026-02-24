@@ -33,6 +33,7 @@ def client_and_repos(monkeypatch):
         monkeypatch.setattr(app_module, "installment_repo", repos["installment"])
         monkeypatch.setattr(app_module, "recurrence_repo", repos["recurrence"])
         monkeypatch.setattr(app_module, "goal_repo", repos["goal"])
+        app_module.sync_state()
         yield app_module.app.test_client(), repos
 
 

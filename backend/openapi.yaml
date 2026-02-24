@@ -1,0 +1,1136 @@
+﻿openapi: 3.0.3
+info:
+  title: SaveYourMoney API
+  version: "1.0.0"
+servers:
+  - url: http://127.0.0.1:5000
+tags:
+  - name: Health
+  - name: Calculator
+  - name: Backup
+  - name: Categories
+  - name: Expenses
+  - name: Incomes
+  - name: Cards
+  - name: Installments
+  - name: Recurrences
+  - name: Goals
+  - name: Reports
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required: [status]
+  /calculadora:
+    post:
+      tags: [Calculator]
+      summary: Calculadora financeira
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    operation: { type: string, enum: [soma, subtracao, multiplicacao, divisao] }
+                    a: { type: number }
+                    b: { type: number }
+                  required: [operation, a, b]
+                - type: object
+                  properties:
+                    operation: { type: string, enum: [juros_simples, juros_compostos, parcelamento] }
+                    principal: { type: number }
+                    rate: { type: number }
+                    months: { type: integer }
+                  required: [operation, principal, rate, months]
+                - type: object
+                  properties:
+                    operation: { type: string, enum: [desconto, rendimento_mensal] }
+                    principal: { type: number }
+                    rate: { type: number }
+                  required: [operation, principal, rate]
+                - type: object
+                  properties:
+                    operation: { type: string, enum: [quitacao_divida] }
+                    principal: { type: number }
+                    rate: { type: number }
+                    payment: { type: number }
+                  required: [operation, principal, rate, payment]
+      responses:
+        "200":
+          description: Resultado da operação
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation: { type: string }
+                  result: {}
+                required: [operation, result]
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /backup/exportar:
+    get:
+      tags: [Backup]
+      summary: Exporta payload de backup
+      responses:
+        "200":
+          description: Payload completo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupPayload"
+  /backup/restaurar:
+    post:
+      tags: [Backup]
+      summary: Restaura backup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BackupPayload"
+      responses:
+        "200":
+          description: Backup restaurado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  imported: { type: object }
+                required: [message, imported]
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /backup:
+    post:
+      tags: [Backup]
+      summary: Cria arquivo .db de backup
+      responses:
+        "201":
+          description: Backup criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backup: { type: string }
+                  path: { type: string }
+                required: [backup, path]
+        "404":
+          description: Banco não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /categorias:
+    get:
+      tags: [Categories]
+      summary: Lista categorias
+      responses:
+        "200":
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      tags: [Categories]
+      summary: Cria categoria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryCreate"
+      responses:
+        "201":
+          description: Categoria criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /categorias/{id}:
+    put:
+      tags: [Categories]
+      summary: Atualiza categoria
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryUpdate"
+      responses:
+        "200":
+          description: Categoria atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "404":
+          description: Categoria não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Categoria vinculada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Categories]
+      summary: Exclui categoria
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Categoria excluída
+        "404":
+          description: Categoria não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Categoria vinculada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /gastos:
+    get:
+      tags: [Expenses]
+      summary: Lista gastos
+      parameters:
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+        - in: query
+          name: recorrente
+          schema: { type: string, enum: [todos, sim, nao] }
+      responses:
+        "200":
+          description: Lista de gastos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      tags: [Expenses]
+      summary: Cria gasto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseCreate"
+      responses:
+        "201":
+          description: Gasto criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /gastos/{id}:
+    put:
+      tags: [Expenses]
+      summary: Atualiza gasto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdate"
+      responses:
+        "200":
+          description: Gasto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: Gasto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Expenses]
+      summary: Exclui gasto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope:
+                  type: string
+                  enum: [this, future, all]
+      responses:
+        "200":
+          description: Gasto excluído
+        "404":
+          description: Gasto não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /entradas:
+    get:
+      tags: [Incomes]
+      summary: Lista entradas
+      parameters:
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Lista de entradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Income"
+    post:
+      tags: [Incomes]
+      summary: Cria entrada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomeCreate"
+      responses:
+        "201":
+          description: Entrada criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Income"
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /entradas/{id}:
+    put:
+      tags: [Incomes]
+      summary: Atualiza entrada
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomeUpdate"
+      responses:
+        "200":
+          description: Entrada atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Income"
+        "404":
+          description: Entrada não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Incomes]
+      summary: Exclui entrada
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Entrada excluída
+        "404":
+          description: Entrada não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cartoes:
+    get:
+      tags: [Cards]
+      summary: Lista cartões
+      responses:
+        "200":
+          description: Lista de cartões
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Card"
+    post:
+      tags: [Cards]
+      summary: Cria cartão
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardCreate"
+      responses:
+        "201":
+          description: Cartão criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /cartoes/{id}:
+    put:
+      tags: [Cards]
+      summary: Atualiza cartão
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CardUpdate"
+      responses:
+        "200":
+          description: Cartão atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Card"
+        "404":
+          description: Cartão não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Cartão com parcelas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Cards]
+      summary: Exclui cartão
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Cartão excluído
+        "404":
+          description: Cartão não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Cartão com parcelas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /parcelas:
+    get:
+      tags: [Installments]
+      summary: Lista parcelas
+      parameters:
+        - in: query
+          name: cartao_id
+          schema: { type: integer }
+        - in: query
+          name: card_id
+          schema: { type: integer }
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Lista de parcelas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Installment"
+  /faturas:
+    get:
+      tags: [Installments]
+      summary: Calcula fatura
+      parameters:
+        - in: query
+          name: cartao_id
+          schema: { type: integer }
+        - in: query
+          name: card_id
+          schema: { type: integer }
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Fatura do cartão
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: number }
+                  parcelas:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Installment"
+                required: [total, parcelas]
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /recorrencias:
+    get:
+      tags: [Recurrences]
+      summary: Lista recorrências
+      responses:
+        "200":
+          description: Lista de recorrências
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recurrence"
+    post:
+      tags: [Recurrences]
+      summary: Cria recorrência
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurrenceCreate"
+      responses:
+        "201":
+          description: Recorrência criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recurrence"
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /recorrencias/{id}:
+    put:
+      tags: [Recurrences]
+      summary: Atualiza recorrência
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurrenceUpdate"
+      responses:
+        "200":
+          description: Recorrência atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recurrence"
+        "404":
+          description: Recorrência não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Recurrences]
+      summary: Exclui recorrência
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Recorrência excluída
+        "404":
+          description: Recorrência não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /recorrencias/aplicar:
+    post:
+      tags: [Recurrences]
+      summary: Aplica recorrência
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: integer }
+              required: [id]
+      responses:
+        "200":
+          description: Recorrência aplicada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expenses:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Expense"
+                  incomes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Income"
+                required: [expenses, incomes]
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Recorrência não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /metas:
+    get:
+      tags: [Goals]
+      summary: Lista metas
+      parameters:
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Lista de metas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Goal"
+    post:
+      tags: [Goals]
+      summary: Cria meta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalCreate"
+      responses:
+        "201":
+          description: Meta criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "400":
+          description: Payload inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /metas/{id}:
+    put:
+      tags: [Goals]
+      summary: Atualiza meta
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalUpdate"
+      responses:
+        "200":
+          description: Meta atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "404":
+          description: Meta não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags: [Goals]
+      summary: Exclui meta
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Meta excluída
+        "404":
+          description: Meta não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /relatorios/mes:
+    get:
+      tags: [Reports]
+      summary: Relatório mensal
+      parameters:
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Relatório
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlyReport"
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /relatorios/mes/csv:
+    get:
+      tags: [Reports]
+      summary: Relatório mensal em CSV
+      parameters:
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: CSV
+          content:
+            text/csv:
+              schema:
+                type: string
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /relatorios/mes/pdf:
+    get:
+      tags: [Reports]
+      summary: Relatório mensal em PDF
+      parameters:
+        - in: query
+          name: mes
+          schema: { type: integer }
+        - in: query
+          name: ano
+          schema: { type: integer }
+      responses:
+        "200":
+          description: PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+      required: [id, name]
+    CategoryCreate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+      required: [name]
+    CategoryUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+      required: [name]
+    Expense:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        category_id: { type: integer, nullable: true }
+        recurrence_id: { type: integer, nullable: true }
+        payment_method: { type: string }
+        notes: { type: string, nullable: true }
+      required: [id, name, value, month, year]
+    ExpenseCreate:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        category_id: { type: integer, nullable: true }
+        payment_method: { type: string }
+        notes: { type: string, nullable: true }
+        installments:
+          type: object
+          properties:
+            card_id: { type: integer }
+            total: { type: integer }
+          required: [card_id, total]
+        recurring:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            frequency: { type: string }
+            interval_months: { type: integer }
+            occurrences: { type: integer }
+            end_month: { type: integer }
+            end_year: { type: integer }
+      required: [name, value, month, year]
+    ExpenseUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        category_id: { type: integer, nullable: true }
+        payment_method: { type: string }
+        notes: { type: string, nullable: true }
+        scope: { type: string, enum: [this, future] }
+      required: [name, value, month, year]
+    Income:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        confirmed: { type: boolean }
+        notes: { type: string, nullable: true }
+      required: [id, name, value, month, year, confirmed]
+    IncomeCreate:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        confirmed: { type: boolean }
+        notes: { type: string, nullable: true }
+      required: [name, value, month, year]
+    IncomeUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        confirmed: { type: boolean }
+        notes: { type: string, nullable: true }
+      required: [name, value, month, year]
+    Card:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        limit: { type: number }
+        bank: { type: string, nullable: true }
+        brand: { type: string, nullable: true }
+        closing_day: { type: integer }
+        due_day: { type: integer }
+      required: [id, name, limit, closing_day, due_day]
+    CardCreate:
+      type: object
+      properties:
+        name: { type: string }
+        limit: { type: number }
+        bank: { type: string, nullable: true }
+        brand: { type: string, nullable: true }
+        closing_day: { type: integer }
+        due_day: { type: integer }
+      required: [name]
+    CardUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        limit: { type: number }
+        bank: { type: string, nullable: true }
+        brand: { type: string, nullable: true }
+        closing_day: { type: integer }
+        due_day: { type: integer }
+      required: [name]
+    Installment:
+      type: object
+      properties:
+        id: { type: integer }
+        card_id: { type: integer }
+        expense_name: { type: string }
+        installment_number: { type: integer }
+        total_installments: { type: integer }
+        value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        status: { type: string }
+      required: [card_id, expense_name, installment_number, total_installments, value, month, year]
+    Recurrence:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string }
+        name: { type: string }
+        value: { type: number }
+        start_month: { type: integer }
+        start_year: { type: integer }
+        interval_months: { type: integer }
+        occurrences: { type: integer }
+        category_id: { type: integer, nullable: true }
+        payment_method: { type: string, nullable: true }
+        confirmed: { type: boolean, nullable: true }
+        notes: { type: string, nullable: true }
+      required: [id, kind, name, value, start_month, start_year, interval_months, occurrences]
+    RecurrenceCreate:
+      type: object
+      properties:
+        kind: { type: string }
+        name: { type: string }
+        value: { type: number }
+        start_month: { type: integer }
+        start_year: { type: integer }
+        interval_months: { type: integer }
+        occurrences: { type: integer }
+        category_id: { type: integer, nullable: true }
+        payment_method: { type: string, nullable: true }
+        confirmed: { type: boolean, nullable: true }
+        notes: { type: string, nullable: true }
+      required: [kind, name, value, start_month, start_year, interval_months, occurrences]
+    RecurrenceUpdate:
+      type: object
+      properties:
+        kind: { type: string }
+        name: { type: string }
+        value: { type: number }
+        start_month: { type: integer }
+        start_year: { type: integer }
+        interval_months: { type: integer }
+        occurrences: { type: integer }
+        category_id: { type: integer, nullable: true }
+        payment_method: { type: string, nullable: true }
+        confirmed: { type: boolean, nullable: true }
+        notes: { type: string, nullable: true }
+      required: [kind, name, value, start_month, start_year, interval_months, occurrences]
+    Goal:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        limit_value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        category_id: { type: integer, nullable: true }
+      required: [id, name, limit_value, month, year]
+    GoalCreate:
+      type: object
+      properties:
+        name: { type: string }
+        limit_value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        category_id: { type: integer, nullable: true }
+      required: [name, limit_value, month, year]
+    GoalUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        limit_value: { type: number }
+        month: { type: integer }
+        year: { type: integer }
+        category_id: { type: integer, nullable: true }
+      required: [name, limit_value, month, year]
+    MonthlyReport:
+      type: object
+      properties:
+        month: { type: integer }
+        year: { type: integer }
+        total_expenses: { type: number }
+        total_incomes: { type: number }
+        balance: { type: number }
+        by_category:
+          type: object
+          additionalProperties:
+            type: number
+        goals:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              limit_value: { type: number }
+              spent: { type: number }
+              remaining: { type: number }
+            required: [id, name, limit_value, spent, remaining]
+      required: [month, year, total_expenses, total_incomes, balance, by_category, goals]
+    BackupPayload:
+      type: object
+      properties:
+        cards:
+          type: array
+          items: { $ref: "#/components/schemas/Card" }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/Category" }
+        expenses:
+          type: array
+          items: { $ref: "#/components/schemas/Expense" }
+        goals:
+          type: array
+          items: { $ref: "#/components/schemas/Goal" }
+        incomes:
+          type: array
+          items: { $ref: "#/components/schemas/Income" }
+        installments:
+          type: array
+          items: { $ref: "#/components/schemas/Installment" }
+        recurrences:
+          type: array
+          items: { $ref: "#/components/schemas/Recurrence" }
