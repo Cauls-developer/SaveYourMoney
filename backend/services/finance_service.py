@@ -20,8 +20,11 @@ def generate_installments(total_value: float, num_installments: int) -> List[flo
     """
     if num_installments <= 0:
         raise ValueError("Número de parcelas deve ser maior que zero.")
-    installment_value = round(total_value / num_installments, 2)
-    return [installment_value] * num_installments
+    base = round(total_value / num_installments, 2)
+    installments = [base] * num_installments
+    diff = round(total_value - sum(installments), 2)
+    installments[-1] = round(installments[-1] + diff, 2)
+    return installments
 
 
 def calculate_invoice(installments: List[float]) -> float:

@@ -27,6 +27,7 @@ class SQLiteIncomeRepository(Repository[Income]):
             )
             """
         )
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_incomes_month_year ON incomes(month, year)")
         self.conn.commit()
 
     def add(self, entity: Income) -> Income:
@@ -56,8 +57,22 @@ class SQLiteIncomeRepository(Repository[Income]):
         return None
 
     def list(self) -> List[Income]:
+        return self.list_filtered()
+
+    def list_filtered(self, *, month: Optional[int] = None, year: Optional[int] = None) -> List[Income]:
         cur = self.conn.cursor()
-        cur.execute("SELECT id, name, value, month, year, confirmed, notes FROM incomes")
+        query = "SELECT id, name, value, month, year, confirmed, notes FROM incomes"
+        conditions = []
+        params = []
+        if month is not None:
+            conditions.append("month=?")
+            params.append(month)
+        if year is not None:
+            conditions.append("year=?")
+            params.append(year)
+        if conditions:
+            query = f"{query} WHERE {' AND '.join(conditions)}"
+        cur.execute(query, tuple(params))
         rows = cur.fetchall()
         return [
             Income(

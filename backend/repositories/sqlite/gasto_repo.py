@@ -31,6 +31,8 @@ class SQLiteExpenseRepository(Repository[Expense]):
         columns = {row[1] for row in cur.fetchall()}
         if "recurrence_id" not in columns:
             cur.execute("ALTER TABLE expenses ADD COLUMN recurrence_id INTEGER")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_expenses_month_year ON expenses(month, year)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_expenses_category_month_year ON expenses(category_id, month, year)")
         self.conn.commit()
 
     def add(self, entity: Expense) -> Expense:
@@ -74,8 +76,31 @@ class SQLiteExpenseRepository(Repository[Expense]):
         return None
 
     def list(self) -> List[Expense]:
+        return self.list_filtered()
+
+    def list_filtered(
+        self,
+        *,
+        month: Optional[int] = None,
+        year: Optional[int] = None,
+        category_id: Optional[int] = None,
+    ) -> List[Expense]:
         cur = self.conn.cursor()
-        cur.execute("SELECT id, name, value, month, year, category_id, recurrence_id, payment_method, notes FROM expenses")
+        query = "SELECT id, name, value, month, year, category_id, recurrence_id, payment_method, notes FROM expenses"
+        conditions = []
+        params = []
+        if month is not None:
+            conditions.append("month=?")
+            params.append(month)
+        if year is not None:
+            conditions.append("year=?")
+            params.append(year)
+        if category_id is not None:
+            conditions.append("category_id=?")
+            params.append(category_id)
+        if conditions:
+            query = f"{query} WHERE {' AND '.join(conditions)}"
+        cur.execute(query, tuple(params))
         rows = cur.fetchall()
         return [
             Expense(

@@ -32,6 +32,7 @@ class SQLiteRecurrenceRepository(Repository[Recurrence]):
             )
             """
         )
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_recurrences_kind_start ON recurrences(kind, start_year, start_month)")
         self.conn.commit()
 
     def add(self, entity: Recurrence) -> Recurrence:

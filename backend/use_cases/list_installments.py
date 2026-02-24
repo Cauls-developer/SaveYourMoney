@@ -11,6 +11,8 @@ def list_installments(
     month: Optional[int] = None,
     year: Optional[int] = None,
 ) -> List[Installment]:
+    if hasattr(repo, "list_filtered"):
+        return repo.list_filtered(card_id=card_id, month=month, year=year)  # type: ignore[attr-defined]
     installments = repo.list()
     return [
         installment

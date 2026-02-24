@@ -29,6 +29,7 @@ class SQLiteInstallmentRepository(Repository[Installment]):
             )
             """
         )
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_installments_card_month_year ON installments(card_id, month, year)")
         self.conn.commit()
 
     def add(self, entity: Installment) -> Installment:
@@ -72,10 +73,34 @@ class SQLiteInstallmentRepository(Repository[Installment]):
         return None
 
     def list(self) -> List[Installment]:
+        return self.list_filtered()
+
+    def list_filtered(
+        self,
+        *,
+        card_id: Optional[int] = None,
+        month: Optional[int] = None,
+        year: Optional[int] = None,
+    ) -> List[Installment]:
         cur = self.conn.cursor()
-        cur.execute(
-            "SELECT id, card_id, expense_name, installment_number, total_installments, value, month, year, status FROM installments"
+        query = (
+            "SELECT id, card_id, expense_name, installment_number, total_installments, value, month, year, status "
+            "FROM installments"
         )
+        conditions = []
+        params = []
+        if card_id is not None:
+            conditions.append("card_id=?")
+            params.append(card_id)
+        if month is not None:
+            conditions.append("month=?")
+            params.append(month)
+        if year is not None:
+            conditions.append("year=?")
+            params.append(year)
+        if conditions:
+            query = f"{query} WHERE {' AND '.join(conditions)}"
+        cur.execute(query, tuple(params))
         rows = cur.fetchall()
         return [
             Installment(

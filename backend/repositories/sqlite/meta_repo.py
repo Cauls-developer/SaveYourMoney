@@ -26,6 +26,7 @@ class SQLiteGoalRepository(Repository[Goal]):
             )
             """
         )
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_goals_month_year_category ON goals(month, year, category_id)")
         self.conn.commit()
 
     def add(self, entity: Goal) -> Goal:
@@ -54,8 +55,31 @@ class SQLiteGoalRepository(Repository[Goal]):
         return None
 
     def list(self) -> List[Goal]:
+        return self.list_filtered()
+
+    def list_filtered(
+        self,
+        *,
+        month: Optional[int] = None,
+        year: Optional[int] = None,
+        category_id: Optional[int] = None,
+    ) -> List[Goal]:
         cur = self.conn.cursor()
-        cur.execute("SELECT id, name, limit_value, month, year, category_id FROM goals")
+        query = "SELECT id, name, limit_value, month, year, category_id FROM goals"
+        conditions = []
+        params = []
+        if month is not None:
+            conditions.append("month=?")
+            params.append(month)
+        if year is not None:
+            conditions.append("year=?")
+            params.append(year)
+        if category_id is not None:
+            conditions.append("category_id=?")
+            params.append(category_id)
+        if conditions:
+            query = f"{query} WHERE {' AND '.join(conditions)}"
+        cur.execute(query, tuple(params))
         rows = cur.fetchall()
         return [
             Goal(

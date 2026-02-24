@@ -108,6 +108,13 @@ Status: **executada parcialmente em 24/02/2026**
 - Padronizar validacoes de referencia (`category_id`, `card_id`, `recurrence_id`).
 - Melhorar arredondamento de parcelas com ajuste da ultima parcela.
 
+Status: **executada em 24/02/2026**
+
+- [x] Indices adicionados para consultas frequentes.
+- [x] Filtros principais movidos para SQL (`expenses`, `incomes`, `goals`, `installments`).
+- [x] Validacoes de referencia aplicadas em criacao/edicao (categoria/cartao).
+- [x] Arredondamento de parcelas com ajuste de centavos na ultima parcela.
+
 ### Fase 3 - Qualidade e testes (3-5 dias)
 
 - Criar `requirements-dev.txt` com ferramentas de qualidade.

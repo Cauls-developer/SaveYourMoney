@@ -83,6 +83,28 @@ def _pick(data: dict, *keys: str, default=None):
     return default
 
 
+def _parse_optional_int(raw_value, field_name: str) -> int | None:
+    if raw_value in (None, ""):
+        return None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name} inválido.") from exc
+    if value <= 0:
+        raise ValueError(f"{field_name} inválido.")
+    return value
+
+
+def _ensure_category_exists(category_id: int | None) -> None:
+    if category_id is not None and not category_repo.get(category_id):
+        raise ValueError("Categoria não encontrada.")
+
+
+def _ensure_card_exists(card_id: int | None) -> None:
+    if card_id is not None and not card_repo.get(card_id):
+        raise ValueError("Cartão não encontrado.")
+
+
 def _parse_edit_scope(raw_value: str | None) -> str:
     scope = (raw_value or "this").strip().lower()
     if scope not in {"this", "future"}:
@@ -250,6 +272,8 @@ def post_expense():
     try:
         recurring_data = data.get("recurring") or {}
         recurrence_id = None
+        category_id = _parse_optional_int(_pick(data, "category_id", "categoria_id"), "Categoria")
+        _ensure_category_exists(category_id)
         if recurring_data.get("enabled"):
             frequency = str(recurring_data.get("frequency") or "mensal").strip().lower()
             interval_by_frequency = {"semanal": 1, "mensal": 1, "anual": 12}
@@ -274,7 +298,7 @@ def post_expense():
                     start_year=int(data.get("year") or data.get("ano")),
                     interval_months=interval_months,
                     occurrences=occurrences,
-                    category_id=data.get("category_id") or data.get("categoria_id"),
+                    category_id=category_id,
                     payment_method=data.get("payment_method") or data.get("forma") or "debit",
                     notes=data.get("notes") or data.get("observacao"),
                 ),
@@ -286,7 +310,7 @@ def post_expense():
             value=float(data.get("value") or data.get("valor")),
             month=int(data.get("month") or data.get("mes")),
             year=int(data.get("year") or data.get("ano")),
-            category_id=data.get("category_id") or data.get("categoria_id"),
+            category_id=category_id,
             recurrence_id=recurrence_id,
             payment_method=data.get("payment_method") or data.get("forma") or "debit",
             notes=data.get("notes") or data.get("observacao"),
@@ -296,17 +320,21 @@ def post_expense():
     expense = create_expense(expense_repo, expense)
     installments_payload = data.get("installments") or data.get("parcelas")
     if installments_payload:
-        card_id = installments_payload.get("card_id") or installments_payload.get("cartao_id")
+        card_id = _parse_optional_int(
+            installments_payload.get("card_id") or installments_payload.get("cartao_id"),
+            "Cartão",
+        )
         num_installments = int(installments_payload.get("total") or installments_payload.get("total_parcelas") or 1)
         if not card_id:
             return jsonify({"error": "cartao_id é obrigatório para parcelas."}), 400
+        _ensure_card_exists(card_id)
         values = generate_installments(expense.value, num_installments)
         created_installments = []
         month = expense.month
         year = expense.year
         for index, value in enumerate(values, start=1):
             installment = Installment(
-                card_id=int(card_id),
+                card_id=card_id,
                 expense_name=expense.name,
                 installment_number=index,
                 total_installments=num_installments,
@@ -332,13 +360,18 @@ def put_expense(expense_id: int):
     data = request.get_json(silent=True) or {}
     try:
         scope = _parse_edit_scope(data.get("scope"))
+        category_id = _parse_optional_int(
+            _pick(data, "category_id", "categoria_id", default=existing.category_id),
+            "Categoria",
+        )
+        _ensure_category_exists(category_id)
         payload = Expense(
             id=expense_id,
             name=_pick(data, "name", "nome", default=existing.name),
             value=float(_pick(data, "value", "valor", default=existing.value)),
             month=int(_pick(data, "month", "mes", default=existing.month)),
             year=int(_pick(data, "year", "ano", default=existing.year)),
-            category_id=_pick(data, "category_id", "categoria_id", default=existing.category_id),
+            category_id=category_id,
             recurrence_id=existing.recurrence_id,
             payment_method=_pick(data, "payment_method", "forma", default=existing.payment_method),
             notes=_pick(data, "notes", "observacao", default=existing.notes),
@@ -531,6 +564,8 @@ def get_recurrences():
 def post_recurrence():
     data = request.get_json(silent=True) or {}
     try:
+        category_id = _parse_optional_int(_pick(data, "category_id", "categoria_id"), "Categoria")
+        _ensure_category_exists(category_id)
         recurrence = Recurrence(
             kind=data.get("kind") or data.get("tipo"),
             name=data.get("name") or data.get("nome"),
@@ -539,7 +574,7 @@ def post_recurrence():
             start_year=int(data.get("start_year") or data.get("ano_inicio")),
             interval_months=int(data.get("interval_months") or data.get("intervalo_meses") or 1),
             occurrences=int(data.get("occurrences") or data.get("ocorrencias") or 12),
-            category_id=data.get("category_id") or data.get("categoria_id"),
+            category_id=category_id,
             payment_method=data.get("payment_method") or data.get("forma"),
             confirmed=data.get("confirmed"),
             notes=data.get("notes") or data.get("observacao"),
@@ -558,6 +593,11 @@ def put_recurrence(recurrence_id: int):
     data = request.get_json(silent=True) or {}
     try:
         confirmed_raw = _pick(data, "confirmed", default=existing.confirmed)
+        category_id = _parse_optional_int(
+            _pick(data, "category_id", "categoria_id", default=existing.category_id),
+            "Categoria",
+        )
+        _ensure_category_exists(category_id)
         payload = Recurrence(
             id=recurrence_id,
             kind=_pick(data, "kind", "tipo", default=existing.kind),
@@ -567,7 +607,7 @@ def put_recurrence(recurrence_id: int):
             start_year=int(_pick(data, "start_year", "ano_inicio", default=existing.start_year)),
             interval_months=int(_pick(data, "interval_months", "intervalo_meses", default=existing.interval_months)),
             occurrences=int(_pick(data, "occurrences", "ocorrencias", default=existing.occurrences)),
-            category_id=_pick(data, "category_id", "categoria_id", default=existing.category_id),
+            category_id=category_id,
             payment_method=_pick(data, "payment_method", "forma", default=existing.payment_method),
             confirmed=_parse_optional_bool(confirmed_raw) if confirmed_raw is not None else existing.confirmed,
             notes=_pick(data, "notes", "observacao", default=existing.notes),
@@ -614,12 +654,14 @@ def get_goals():
 def post_goal():
     data = request.get_json(silent=True) or {}
     try:
+        category_id = _parse_optional_int(_pick(data, "category_id", "categoria_id"), "Categoria")
+        _ensure_category_exists(category_id)
         goal = Goal(
             name=data.get("name") or data.get("nome"),
             limit_value=float(data.get("limit_value") or data.get("valor_limite")),
             month=int(data.get("month") or data.get("mes")),
             year=int(data.get("year") or data.get("ano")),
-            category_id=data.get("category_id") or data.get("categoria_id"),
+            category_id=category_id,
         )
     except (TypeError, ValueError) as exc:
         return jsonify({"error": f"Dados inválidos para meta. {exc}"}), 400
@@ -634,13 +676,18 @@ def put_goal(goal_id: int):
         return jsonify({"error": "Meta não encontrada."}), 404
     data = request.get_json(silent=True) or {}
     try:
+        category_id = _parse_optional_int(
+            _pick(data, "category_id", "categoria_id", default=existing.category_id),
+            "Categoria",
+        )
+        _ensure_category_exists(category_id)
         payload = Goal(
             id=goal_id,
             name=_pick(data, "name", "nome", default=existing.name),
             limit_value=float(_pick(data, "limit_value", "valor_limite", default=existing.limit_value)),
             month=int(_pick(data, "month", "mes", default=existing.month)),
             year=int(_pick(data, "year", "ano", default=existing.year)),
-            category_id=_pick(data, "category_id", "categoria_id", default=existing.category_id),
+            category_id=category_id,
         )
         goal_repo.update(payload)
     except (TypeError, ValueError) as exc:
