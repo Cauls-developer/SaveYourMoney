@@ -1,152 +1,218 @@
 # Save Your Money
 
-Aplicativo desktop para controle de finanças pessoais, com backend em Python (Flask + SQLite) e interface em Electron.
+Aplicativo desktop para controle de finanças pessoais, com backend em
+Python (Flask + SQLite) e interface desktop em Electron.
 
-## Visão geral
+------------------------------------------------------------------------
 
-- Backend local com API HTTP em `http://127.0.0.1:5000`
-- Documentação Swagger em `http://127.0.0.1:5000/docs` (spec em `/openapi.yaml`)
-- Frontend desktop em Electron
-- Banco local SQLite (`saveyourmoney.db`)
-- Geração de instalador Windows (`.exe`) com `electron-builder`
-- Suporte a auto-update via `electron-updater`
+# 🚀 Visão Geral
 
-## Estrutura do projeto
+**Save Your Money** é um aplicativo desktop focado em organização
+financeira pessoal.
 
-```text
-backend/                 # API, domínio, casos de uso e repositórios SQLite
-frontend/                # Aplicação Electron
-deploy-installer.bat     # Script de deploy do instalador
-DEPLOY-INSTALLER.txt     # Guia rápido do deploy
-SaveYourMoney-Installer.exe  # Instalador final para distribuição (raiz)
-```
+Arquitetura:
 
-## Pré-requisitos
+-   Backend local em Python (Flask + SQLite)
+-   API HTTP em `http://127.0.0.1:5000`
+-   Documentação Swagger em `http://127.0.0.1:5000/docs`
+-   Frontend desktop em Electron
+-   Banco local SQLite (`saveyourmoney.db`)
+-   Instalador Windows gerado com `electron-builder`
+-   Auto-update via `electron-updater`
 
-- Windows (fluxo de instalador atual foi preparado para Windows/NSIS)
-- Python 3.10+ e Node.js 18+ sao instalados automaticamente pelo `deploy-installer.bat` caso nao existam.
-- Se `winget` estiver disponivel, ele sera usado primeiro.
-- Sem `winget`, o script usa download direto oficial em modo silencioso.
+------------------------------------------------------------------------
 
-## Setup de desenvolvimento
+# 📁 Estrutura do Projeto
 
-1. Criar e preparar o ambiente Python:
+    backend/                 API, domínio, casos de uso e repositórios SQLite
+    frontend/                Aplicação Electron
+    scripts/                 Scripts auxiliares
+    deploy-installer.bat     Script principal de build do instalador
+    build-backend.bat        Build manual do backend
+    SaveYourMoney-Installer.exe  Instalador final (raiz)
 
-```powershell
+------------------------------------------------------------------------
+
+# ⚙️ Pré-requisitos
+
+-   Windows (fluxo de instalador preparado para NSIS)
+-   Python 3.10+
+-   Node.js 18+
+
+O script `deploy-installer.bat` instala dependências automaticamente via
+`winget` quando disponível.
+
+------------------------------------------------------------------------
+
+# 🛠️ Setup de Desenvolvimento
+
+## Backend
+
+``` powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-2. Instalar dependências do frontend:
+## Frontend
 
-```powershell
+``` powershell
 cd ..\frontend
 npm install
 ```
 
-## Como executar em desenvolvimento
+------------------------------------------------------------------------
 
-1. Iniciar backend (na raiz do projeto):
+# ▶️ Executando em Desenvolvimento
 
-```powershell
-cd D:\developer\projects\SaveYourMoney
+## Iniciar Backend
+
+``` powershell
 backend\.venv\Scripts\python.exe -m backend.app
 ```
 
-2. Em outro terminal, iniciar Electron:
+## Iniciar Electron
 
-```powershell
-cd D:\developer\projects\SaveYourMoney\frontend
+``` powershell
+cd frontend
 npm run start
 ```
 
-## Build do instalador (recomendado)
+------------------------------------------------------------------------
 
-Use o script da raiz:
+# 🏗️ Build do Instalador (Recomendado)
 
-```powershell
+``` powershell
 .\deploy-installer.bat
 ```
 
-Esse script executa automaticamente:
+O script:
 
-1. Instala Python (via `winget`) se não existir no computador
-2. Instala Node.js/npm (via `winget`) se não existir no computador
-3. Se `winget` nao estiver disponivel, aplica fallback com download direto oficial (Python installer + Node zip)
-4. Cria o `backend\.venv` (se não existir) e instala `backend\requirements.txt`
-5. Empacota o backend em binário com PyInstaller (`backend\SaveYourMoney-Backend.exe`)
-   - Se o binário já existir, o build é pulado.
-   - Para forçar rebuild do backend:
-     `set FORCE_BACKEND_BUILD=1`
-6. Executa `npm install` no `frontend`
-7. Gera instalador com `npx electron-builder --win nsis`
-8. Copia o instalador mais recente de `frontend\dist\SaveYourMoney Setup *.exe` para:
-   `SaveYourMoney-Installer.exe` (na raiz)
+1.  Garante Python e Node instalados
+2.  Cria `.venv` se necessário
+3.  Empacota backend via PyInstaller
+4.  Executa `npm install`
+5.  Gera instalador via electron-builder
+6.  Copia instalador final para raiz
 
-Arquivo final para distribuição:
+Artefato final:
 
-- `SaveYourMoney-Installer.exe`
+    SaveYourMoney-Installer.exe
 
-Referência rápida:
+------------------------------------------------------------------------
 
-- `DEPLOY-INSTALLER.txt`
+# 🧪 Testes (Backend)
 
-## Build manual (alternativa)
-
-```powershell
-.\build-backend.bat
-cd frontend
-npm install
-npm run build:win
-```
-
-Artefatos de build ficam em `frontend\dist\`.
-
-## Execução no app instalado
-
-- O Electron inicia o backend automaticamente em segundo plano.
-- Dados e backups são gravados na pasta de usuário (`AppData`), não em `Program Files`.
-- Logs do backend ficam em `AppData\...\logs\backend.log`.
-
-## Auto-update (Windows)
-
-O app usa `electron-updater` com provider `generic`.
-
-1. Configure `frontend\update-config.json` com a URL pública dos artefatos.
-2. A cada release:
-   - Atualize `version` em `frontend\package.json`
-   - Rode o build
-   - Publique **todos** os arquivos de `frontend\dist\` na URL configurada
-
-## Testes (backend)
-
-Os testes ficam em `backend\tests\`. Se quiser executar:
-
-```powershell
+``` powershell
 cd backend
 python -m pytest
 ```
 
-Se `pytest` não estiver instalado no ambiente, instale com:
+------------------------------------------------------------------------
 
-```powershell
-python -m pip install pytest
+# 🔄 Sistema de Execução Automática de Tasks (Codex)
+
+Este projeto possui um ecossistema opcional para automação de tarefas
+via Codex.
+
+## Objetivo
+
+Permitir que tarefas sejam descritas em `Tasks.md` e executadas
+automaticamente, com registro técnico completo em `progress.md`.
+
+## Arquivos na Raiz
+
+    Tasks.md
+    progress.md
+    scripts/run_tasks.bat
+
+## Como Funciona
+
+1.  O desenvolvedor escreve tarefas em `Tasks.md` com:
+    -   Título
+    -   Descrição
+    -   Critérios de aceite
+    -   Status (TODO \| DONE \| BLOCKED)
+2.  Executa:
+
+``` powershell
+.\scripts\run_tasks.bat
 ```
 
-## Troubleshooting rápido
+3.  O Codex:
+    -   Lê `AGENTS.md`
+    -   Processa a primeira task com Status: TODO
+    -   Executa mudanças mínimas necessárias
+    -   Roda validações (pytest / npm quando aplicável)
+    -   Atualiza `Tasks.md`
+    -   Registra em `progress.md`
+    -   Repete até não haver TODO
 
-- Erro no build do instalador:
-  - Verifique se Node/npm estão instalados e acessíveis no terminal.
-  - Se aparecer `spawn EPERM` com `app-builder.exe`, o Windows provavelmente bloqueou execução.
-  - Libere o arquivo `frontend\node_modules\app-builder-bin\win\x64\app-builder.exe` no antivirus/Windows Security e rode:
-    `Unblock-File "frontend\node_modules\app-builder-bin\win\x64\app-builder.exe"`
-- Erro no build do backend (PyInstaller):
-  - Garanta que `build-backend.bat` rodou sem erros.
-  - Confirme se existe `backend\SaveYourMoney-Backend.exe` após o build.
-  - Veja o log em `backend\build-backend.log`.
-  - Se o binário não iniciar, rode com `SAVEYOURMONEY_DEBUG=1` e verifique logs em `AppData\...\logs\backend.log`.
-- Backend não sobe no app instalado:
-  - Verifique o log em `AppData\...\logs\backend.log`.
-- `SaveYourMoney-Installer.exe` não atualizou:
-  - Confirme se `frontend\dist\SaveYourMoney Setup *.exe` foi gerado com sucesso.
+## Benefícios
+
+-   Histórico técnico automático
+-   Execução disciplinada
+-   Redução de decisões repetitivas
+-   Padronização de mudanças
+-   Economia de tokens (arquivos como fonte de verdade)
+
+------------------------------------------------------------------------
+
+# 🧠 Contribuição via Codex (Modelo Profissional)
+
+Este projeto adota um modelo estruturado de colaboração assistida por
+IA.
+
+## Princípios
+
+-   Tasks como fonte oficial de trabalho
+-   Uma task por vez
+-   Critérios de aceite obrigatórios
+-   Registro técnico completo
+-   Mudanças pequenas e auditáveis
+
+## Fluxo de Contribuição
+
+1.  Criar ou atualizar `Tasks.md`
+2.  Definir critérios de aceite claros
+3.  Executar runner
+4.  Revisar `progress.md`
+5.  Validar testes e commits
+
+Esse modelo garante:
+
+-   Rastreabilidade
+-   Transparência técnica
+-   Menor risco de regressão
+-   Integração harmoniosa entre backend e frontend
+
+------------------------------------------------------------------------
+
+# 🔐 Execução no App Instalado
+
+-   Backend inicia automaticamente
+-   Dados armazenados em AppData
+-   Logs disponíveis em `AppData\...\logs\backend.log`
+
+------------------------------------------------------------------------
+
+# 🔁 Auto-update (Windows)
+
+1.  Configurar `frontend/update-config.json`
+2.  Atualizar `version` em `frontend/package.json`
+3.  Gerar build
+4.  Publicar arquivos de `frontend/dist/`
+
+------------------------------------------------------------------------
+
+# 📌 Troubleshooting
+
+-   Verificar bloqueio de antivirus no `app-builder.exe`
+-   Confirmar geração de `backend\SaveYourMoney-Backend.exe`
+-   Rodar com `SAVEYOURMONEY_DEBUG=1` para debug backend
+
+------------------------------------------------------------------------
+
+# 📜 Licença
+
+Uso pessoal e educacional.
