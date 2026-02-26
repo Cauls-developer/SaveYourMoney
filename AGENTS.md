@@ -21,6 +21,17 @@
 - Frontend: keep shared styles in `frontend/pages/styles.css`, pages in `frontend/pages/*.html`, and page scripts alongside them (example: `calculator-widget.js`).
 - Prefer consistent class naming already used in pages (ex: `app-header`, `kpi-card`) and reuse CSS variables from `:root`.
 
+## Design System (Frontend)
+- Theme direction: vinho/ameixa (dark) + creme (light), com acentos turquesa. Use os tokens de `:root` em `frontend/pages/styles.css`.
+- Palette tokens: `--wine-primary`, `--wine-dark`, `--deep-purple`, `--cream`, `--cream-soft`, `--turquoise`, `--text-strong`, `--text-muted`, `--surface`, `--surface-soft`, `--border-soft`.
+- Typography: base `Manrope` com fallback `Segoe UI`. Títulos com peso 800 e tracking levemente negativo.
+- Radius/shadows: use `--radius-lg`, `--radius-md`, `--shadow-md`, `--shadow-lg`.
+- Layout: `--sidebar-width` + grids utilitários (`.grid`, `.split`) e cards (`.card`, `.kpi-card`).
+- Components padrão: `.navbar`, `.logo`, `.app-nav`, `.brand`, `.button`/`.btn-primary`, `.pill`/`.badge`, `.list`, `.modal`.
+- Spacing & Type Scale: defina tokens/classes para espaçamento entre widgets e hierarquia textual (primário/secundário/terciário), documentando uso no Design System e reaproveitando `styles.css`.
+- Logos: usar `frontend/assets/logo.png` e `frontend/assets/icon.ico` sem alterar cores; não aplicar filtros.
+- Novas páginas devem reutilizar os tokens e classes acima antes de criar estilos novos.
+
 ## Testing Guidelines
 - Framework: `pytest` in `backend/tests/`.
 - Naming: `test_*.py`.
