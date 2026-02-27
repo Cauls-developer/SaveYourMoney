@@ -26,65 +26,74 @@ def _init_repositories(db_path: str):
     }
 
 
+def _close_repositories(repos: dict[str, object]) -> None:
+    for repo in repos.values():
+        close = getattr(repo, "close", None)
+        if callable(close):
+            close()
+
+
 def test_export_backup_payload_contains_expected_keys():
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
         repos = _init_repositories(db_path)
-
-        category = repos["category"].add(Category(name="Casa", description="Contas"))
-        card = repos["card"].add(Card(name="Cartão A", limit=1000, closing_day=5, due_day=15))
-        expense = repos["expense"].add(Expense(name="Luz", value=120.5, month=2, year=2026, category_id=category.id))
-        income = repos["income"].add(Income(name="Salário", value=3500, month=2, year=2026, confirmed=True))
-        recurrence = repos["recurrence"].add(
-            Recurrence(kind="expense", name="Internet", value=99.9, start_month=2, start_year=2026)
-        )
-        installment = repos["installment"].add(
-            Installment(
-                card_id=card.id,
-                expense_name="Notebook",
-                installment_number=1,
-                total_installments=10,
-                value=300,
-                month=2,
-                year=2026,
+        try:
+            category = repos["category"].add(Category(name="Casa", description="Contas"))
+            card = repos["card"].add(Card(name="Cartão A", limit=1000, closing_day=5, due_day=15))
+            expense = repos["expense"].add(Expense(name="Luz", value=120.5, month=2, year=2026, category_id=category.id))
+            income = repos["income"].add(Income(name="Salário", value=3500, month=2, year=2026, confirmed=True))
+            recurrence = repos["recurrence"].add(
+                Recurrence(kind="expense", name="Internet", value=99.9, start_month=2, start_year=2026)
             )
-        )
-        goal = repos["goal"].add(Goal(name="Meta geral", limit_value=1000, month=2, year=2026, category_id=category.id))
+            installment = repos["installment"].add(
+                Installment(
+                    card_id=card.id,
+                    expense_name="Notebook",
+                    installment_number=1,
+                    total_installments=10,
+                    value=300,
+                    month=2,
+                    year=2026,
+                )
+            )
+            goal = repos["goal"].add(Goal(name="Meta geral", limit_value=1000, month=2, year=2026, category_id=category.id))
 
-        payload = export_backup_payload(
-            cards=[card],
-            categories=[category],
-            expenses=[expense],
-            goals=[goal],
-            incomes=[income],
-            installments=[installment],
-            recurrences=[recurrence],
-        )
+            payload = export_backup_payload(
+                cards=[card],
+                categories=[category],
+                expenses=[expense],
+                goals=[goal],
+                incomes=[income],
+                installments=[installment],
+                recurrences=[recurrence],
+            )
 
-        assert payload["version"] == "1.0"
-        assert set(payload.keys()) == {
-            "version",
-            "exportedAt",
-            "cards",
-            "expenses",
-            "recurringExpenses",
-            "income",
-            "categories",
-            "installments",
-            "goals",
-            "settings",
-        }
+            assert payload["version"] == "1.0"
+            assert set(payload.keys()) == {
+                "version",
+                "exportedAt",
+                "cards",
+                "expenses",
+                "recurringExpenses",
+                "income",
+                "categories",
+                "installments",
+                "goals",
+                "settings",
+            }
+        finally:
+            _close_repositories(repos)
 
 
 def test_restore_backup_payload_replaces_existing_data():
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
         repos = _init_repositories(db_path)
+        try:
+            category = repos["category"].add(Category(name="Velha categoria"))
+            repos["expense"].add(Expense(name="Antigo", value=10, month=1, year=2026, category_id=category.id))
 
-        category = repos["category"].add(Category(name="Velha categoria"))
-        repos["expense"].add(Expense(name="Antigo", value=10, month=1, year=2026, category_id=category.id))
-
-        payload = {
+            payload = {
             "version": "1.0",
             "exportedAt": "2026-02-23",
             "cards": [
@@ -168,77 +177,84 @@ def test_restore_backup_payload_replaces_existing_data():
                 }
             ],
             "settings": {},
-        }
+            }
 
-        restore_backup_payload(db_path, payload)
+            restore_backup_payload(db_path, payload)
 
-        categories = repos["category"].list()
-        expenses = repos["expense"].list()
-        cards = repos["card"].list()
+            categories = repos["category"].list()
+            expenses = repos["expense"].list()
+            cards = repos["card"].list()
 
-        assert len(categories) == 1
-        assert categories[0].name == "Alimentação"
-        assert len(expenses) == 1
-        assert expenses[0].name == "Mercado"
-        assert len(cards) == 1
-        assert cards[0].id == 11
+            assert len(categories) == 1
+            assert categories[0].name == "Alimentação"
+            assert len(expenses) == 1
+            assert expenses[0].name == "Mercado"
+            assert len(cards) == 1
+            assert cards[0].id == 11
+        finally:
+            _close_repositories(repos)
 
 
 def test_restore_backup_payload_rejects_incompatible_version():
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
-        _init_repositories(db_path)
-        payload = {
-            "version": "2.0",
-            "cards": [],
-            "expenses": [],
-            "recurringExpenses": [],
-            "income": [],
-            "categories": [],
-            "settings": {},
-        }
+        repos = _init_repositories(db_path)
+        try:
+            payload = {
+                "version": "2.0",
+                "cards": [],
+                "expenses": [],
+                "recurringExpenses": [],
+                "income": [],
+                "categories": [],
+                "settings": {},
+            }
 
-        with pytest.raises(BackupValidationError):
-            restore_backup_payload(db_path, payload)
+            with pytest.raises(BackupValidationError):
+                restore_backup_payload(db_path, payload)
+        finally:
+            _close_repositories(repos)
 
 
 def test_restore_backup_payload_keeps_current_data_on_failure():
     with tempfile.TemporaryDirectory() as tmp:
         db_path = os.path.join(tmp, "test.db")
         repos = _init_repositories(db_path)
+        try:
+            original_category = repos["category"].add(Category(name="Original"))
+            repos["expense"].add(
+                Expense(name="Conta existente", value=42, month=2, year=2026, category_id=original_category.id)
+            )
 
-        original_category = repos["category"].add(Category(name="Original"))
-        repos["expense"].add(
-            Expense(name="Conta existente", value=42, month=2, year=2026, category_id=original_category.id)
-        )
+            invalid_payload = {
+                "version": "1.0",
+                "cards": [],
+                "expenses": [
+                    {
+                        "id": 1,
+                        "name": "Novo gasto inválido",
+                        "value": 10,
+                        "month": 2,
+                        "year": 2026,
+                        "category_id": 9999,
+                        "payment_method": "debit",
+                        "notes": None,
+                    }
+                ],
+                "recurringExpenses": [],
+                "income": [],
+                "categories": [],
+                "settings": {},
+            }
 
-        invalid_payload = {
-            "version": "1.0",
-            "cards": [],
-            "expenses": [
-                {
-                    "id": 1,
-                    "name": "Novo gasto inválido",
-                    "value": 10,
-                    "month": 2,
-                    "year": 2026,
-                    "category_id": 9999,
-                    "payment_method": "debit",
-                    "notes": None,
-                }
-            ],
-            "recurringExpenses": [],
-            "income": [],
-            "categories": [],
-            "settings": {},
-        }
+            with pytest.raises(BackupValidationError):
+                restore_backup_payload(db_path, invalid_payload)
 
-        with pytest.raises(BackupValidationError):
-            restore_backup_payload(db_path, invalid_payload)
-
-        categories = repos["category"].list()
-        expenses = repos["expense"].list()
-        assert len(categories) == 1
-        assert categories[0].name == "Original"
-        assert len(expenses) == 1
-        assert expenses[0].name == "Conta existente"
+            categories = repos["category"].list()
+            expenses = repos["expense"].list()
+            assert len(categories) == 1
+            assert categories[0].name == "Original"
+            assert len(expenses) == 1
+            assert expenses[0].name == "Conta existente"
+        finally:
+            _close_repositories(repos)

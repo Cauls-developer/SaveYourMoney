@@ -34,7 +34,11 @@ def client_and_repos(monkeypatch):
         monkeypatch.setattr(app_module, "recurrence_repo", repos["recurrence"])
         monkeypatch.setattr(app_module, "goal_repo", repos["goal"])
         app_module.sync_state()
-        yield app_module.app.test_client(), repos
+        try:
+            yield app_module.app.test_client(), repos
+        finally:
+            for repo in repos.values():
+                repo.close()
 
 
 def test_create_goal_rejects_unknown_category(client_and_repos):
@@ -133,3 +137,21 @@ def test_create_recurrence_rejects_unknown_category(client_and_repos):
     )
     assert response.status_code == 400
     assert "Categoria não encontrada" in response.get_json()["error"]
+
+
+def test_report_month_pdf_returns_file(client_and_repos):
+    client, repos = client_and_repos
+    category = repos["category"].add(app_module.Category(name="Mercado"))
+    repos["expense"].add(app_module.Expense(name="Compra do mês", value=350.0, month=2, year=2026, category_id=category.id))
+    repos["income"].add(app_module.Income(name="Salário", value=4000.0, month=2, year=2026, confirmed=True))
+    repos["goal"].add(
+        app_module.Goal(name="Meta Mercado", limit_value=500.0, month=2, year=2026, category_id=category.id)
+    )
+
+    response = client.get("/relatorios/mes/pdf?mes=2&ano=2026")
+
+    assert response.status_code == 200
+    assert response.mimetype == "application/pdf"
+    assert "relatorio_02_2026.pdf" in response.headers.get("Content-Disposition", "")
+    assert response.data.startswith(b"%PDF")
+    assert len(response.data) > 1500

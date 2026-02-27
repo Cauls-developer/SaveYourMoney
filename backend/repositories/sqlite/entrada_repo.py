@@ -102,3 +102,12 @@ class SQLiteIncomeRepository(Repository[Income]):
         cur = self.conn.cursor()
         cur.execute("DELETE FROM incomes WHERE id=?", (entity_id,))
         self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
