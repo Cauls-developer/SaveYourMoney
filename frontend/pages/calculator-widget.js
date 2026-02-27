@@ -33,13 +33,20 @@
 
   const modalHeader = document.createElement('div');
   modalHeader.className = 'modal-header';
+  const headerCopy = document.createElement('div');
+  headerCopy.className = 'stack-1';
   const modalTitle = document.createElement('h3');
-  modalTitle.textContent = 'Calculadora';
+  modalTitle.textContent = 'Calculadora Financeira';
+  const modalSubtitle = document.createElement('small');
+  modalSubtitle.className = 'text-secondary';
+  modalSubtitle.textContent = 'Use o teclado para preencher os campos da operação.';
   const closeButton = document.createElement('button');
   closeButton.className = 'modal-close';
   closeButton.type = 'button';
   closeButton.textContent = '×';
-  modalHeader.appendChild(modalTitle);
+  headerCopy.appendChild(modalTitle);
+  headerCopy.appendChild(modalSubtitle);
+  modalHeader.appendChild(headerCopy);
   modalHeader.appendChild(closeButton);
 
   const layout = document.createElement('div');
@@ -144,8 +151,12 @@
   const answer = document.createElement('div');
   answer.className = 'calculator-answer';
   answer.id = 'calc-answer';
-  answer.textContent = 'Selecione a operação e use o teclado.';
+  answer.textContent = 'Selecione uma operação e toque em Calcular.';
+  const note = document.createElement('p');
+  note.className = 'calc-note';
+  note.textContent = 'Dica: alterne os campos clicando nos blocos acima do teclado.';
   right.appendChild(answer);
+  right.appendChild(note);
 
   layout.appendChild(left);
   layout.appendChild(right);

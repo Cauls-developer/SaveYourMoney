@@ -22,12 +22,10 @@
           <a href="dashboard.html">Dashboard</a>
           <a class="active" href="expenses.html">Gastos</a>
           <a href="incomes.html">Entradas</a>
-          <a href="categories.html">Categorias</a>
-          <a href="cards.html">Cartões</a>
+          <a href="banks.html">Bancos</a>
           <a href="reports.html">Relatórios</a>
           <a href="goals.html">Metas</a>
-          <a href="recurrences.html">Recorrências</a>
-          <a href="backup.html">Backup</a>
+          <a href="settings.html">Configurações</a>
         </nav>
       </div>
     </header>
@@ -42,6 +40,22 @@
     </div>
     <section class="section-title">Lista de gastos</section>
     <ul id="expenses-list" class="list"></ul>
+
+    <section class="section-title">Categorias</section>
+    <div class="card stack-4">
+      <div class="inline-actions">
+        <button id="open-category-modal" class="button ghost">Nova categoria</button>
+      </div>
+      <ul id="categories-list" class="list"></ul>
+    </div>
+
+    <section class="section-title">Recorrências</section>
+    <div class="card stack-4">
+      <div class="inline-actions">
+        <button id="open-recurrence-modal" class="button ghost">Nova recorrência</button>
+      </div>
+      <ul id="recurrences-list" class="list"></ul>
+    </div>
   </div>
 
   <div id="expense-modal" class="modal">
@@ -147,6 +161,103 @@
       </form>
     </div>
   </div>
+
+  <div id="category-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="category-modal-title">Editar categoria</h3>
+        <button class="modal-close" id="close-category-modal">×</button>
+      </div>
+      <form id="category-form" class="app-form">
+        <input id="category-modal-id" type="hidden" />
+        <div class="field">
+          <label for="category-name">Nome</label>
+          <input id="category-name" placeholder="Ex.: Alimentação" required />
+        </div>
+        <div class="field">
+          <label for="category-description">Descrição</label>
+          <textarea id="category-description" placeholder="Detalhe a categoria"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-category">Cancelar</button>
+          <button type="button" class="button danger" id="delete-category">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="recurrence-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editar recorrência</h3>
+        <button class="modal-close" id="close-recurrence-modal">×</button>
+      </div>
+      <form id="recurrence-form" class="app-form">
+        <input id="recurrence-id" type="hidden" />
+        <div class="field">
+          <label for="recurrence-kind">Tipo</label>
+          <select id="recurrence-kind">
+            <option value="expense">Gasto</option>
+            <option value="income">Entrada</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="recurrence-name">Nome</label>
+          <input id="recurrence-name" placeholder="Ex.: Assinatura" required />
+        </div>
+        <div class="field">
+          <label for="recurrence-value">Valor</label>
+          <input id="recurrence-value" type="text" inputmode="decimal" placeholder="0,00" required />
+        </div>
+        <div class="field">
+          <label for="recurrence-start-month">Mês inicial</label>
+          <input id="recurrence-start-month" type="number" min="1" max="12" required />
+        </div>
+        <div class="field">
+          <label for="recurrence-start-year">Ano inicial</label>
+          <input id="recurrence-start-year" type="number" min="2000" required />
+        </div>
+        <div class="field">
+          <label for="recurrence-interval-months">Intervalo (meses)</label>
+          <input id="recurrence-interval-months" type="number" min="1" value="1" />
+        </div>
+        <div class="field">
+          <label for="recurrence-occurrences">Ocorrências</label>
+          <input id="recurrence-occurrences" type="number" min="1" value="12" />
+        </div>
+        <div class="field">
+          <label for="recurrence-category">Categoria (opcional)</label>
+          <select id="recurrence-category">
+            <option value="">Sem categoria</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="recurrence-payment-method">Forma (para gasto)</label>
+          <select id="recurrence-payment-method">
+            <option value="debit">Débito</option>
+            <option value="credit">Crédito</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="recurrence-confirmed">Status (para entrada)</label>
+          <select id="recurrence-confirmed">
+            <option value="true">Confirmado</option>
+            <option value="false">Previsto</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="recurrence-notes">Observação</label>
+          <textarea id="recurrence-notes"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="button secondary" id="cancel-recurrence">Cancelar</button>
+          <button type="button" class="button danger" id="delete-recurrence">Excluir</button>
+          <button type="submit" class="button">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
   <script>
     const form = document.getElementById('expense-form');
     const list = document.getElementById('expenses-list');
@@ -162,8 +273,28 @@
     const recurringFilter = document.getElementById('recurring-filter');
     const editScopeField = document.getElementById('scope-edit-field');
     const deleteScopeField = document.getElementById('scope-delete-field');
+    const categoriesList = document.getElementById('categories-list');
+    const recurrencesList = document.getElementById('recurrences-list');
+    const recurrenceCategorySelect = document.getElementById('recurrence-category');
+    const categoryModal = document.getElementById('category-modal');
+    const openCategoryModal = document.getElementById('open-category-modal');
+    const closeCategoryModal = document.getElementById('close-category-modal');
+    const cancelCategory = document.getElementById('cancel-category');
+    const deleteCategoryButton = document.getElementById('delete-category');
+    const categoryForm = document.getElementById('category-form');
+    const recurrenceModal = document.getElementById('recurrence-modal');
+    const openRecurrenceModal = document.getElementById('open-recurrence-modal');
+    const closeRecurrenceModal = document.getElementById('close-recurrence-modal');
+    const cancelRecurrence = document.getElementById('cancel-recurrence');
+    const deleteRecurrenceButton = document.getElementById('delete-recurrence');
+    const recurrenceForm = document.getElementById('recurrence-form');
+    const recurrenceKindSelect = document.getElementById('recurrence-kind');
+    const recurrencePaymentField = document.getElementById('recurrence-payment-method').closest('.field');
+    const recurrenceConfirmedField = document.getElementById('recurrence-confirmed').closest('.field');
 
     let currentExpenses = [];
+    let currentCategories = [];
+    let currentRecurrences = [];
 
     function showToast(message, isError = false) {
       const toast = document.createElement('div');
@@ -197,6 +328,24 @@
 
     function toggleRecurringFields() {
       recurringExtra.style.display = recurringToggle.checked ? '' : 'none';
+    }
+
+    function toggleRecurrenceKindFields() {
+      const isExpense = recurrenceKindSelect.value === 'expense';
+      recurrencePaymentField.style.display = isExpense ? '' : 'none';
+      recurrenceConfirmedField.style.display = isExpense ? 'none' : '';
+    }
+
+    function setRecurrenceInitialValues() {
+      const now = new Date();
+      document.getElementById('recurrence-start-month').value = now.getMonth() + 1;
+      document.getElementById('recurrence-start-year').value = now.getFullYear();
+      document.getElementById('recurrence-interval-months').value = 1;
+      document.getElementById('recurrence-occurrences').value = 12;
+      recurrenceKindSelect.value = 'expense';
+      document.getElementById('recurrence-payment-method').value = 'debit';
+      document.getElementById('recurrence-confirmed').value = 'true';
+      toggleRecurrenceKindFields();
     }
 
     function openModal(expense) {
@@ -286,17 +435,133 @@
 
     async function loadCategories() {
       const categories = await window.api.listCategories();
+      currentCategories = categories;
       categorySelect.replaceChildren();
+      recurrenceCategorySelect.replaceChildren();
       const emptyOption = document.createElement('option');
       emptyOption.value = '';
       emptyOption.textContent = 'Sem categoria';
       categorySelect.appendChild(emptyOption);
+      recurrenceCategorySelect.appendChild(emptyOption.cloneNode(true));
       categories.forEach((category) => {
         const option = document.createElement('option');
         option.value = category.id;
         option.textContent = category.name;
         categorySelect.appendChild(option);
+        recurrenceCategorySelect.appendChild(option.cloneNode(true));
       });
+      renderCategories(categories);
+    }
+
+    function openCategoryModalForm(category) {
+      if (category) {
+        document.getElementById('category-modal-id').value = category.id;
+        document.getElementById('category-name').value = category.name || '';
+        document.getElementById('category-description').value = category.description || '';
+        deleteCategoryButton.style.display = '';
+      } else {
+        categoryForm.reset();
+        document.getElementById('category-modal-id').value = '';
+        deleteCategoryButton.style.display = 'none';
+      }
+      categoryModal.classList.add('active');
+    }
+
+    function closeCategoryModalForm() {
+      categoryModal.classList.remove('active');
+    }
+
+    function renderCategories(categories) {
+      categoriesList.replaceChildren();
+      categories.forEach((category) => {
+        const item = document.createElement('li');
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = category.name;
+        const detail = document.createElement('small');
+        detail.textContent = category.description ? category.description : 'Sem descrição';
+        info.appendChild(title);
+        info.appendChild(detail);
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.editCategory = category.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(editButton);
+        item.appendChild(info);
+        item.appendChild(actions);
+        categoriesList.appendChild(item);
+      });
+    }
+
+    function openRecurrenceModalForm(recurrence) {
+      if (recurrence) {
+        document.getElementById('recurrence-id').value = recurrence.id;
+        recurrenceKindSelect.value = recurrence.kind || 'expense';
+        document.getElementById('recurrence-name').value = recurrence.name || '';
+        document.getElementById('recurrence-value').value = String(recurrence.value || '');
+        document.getElementById('recurrence-start-month').value = recurrence.start_month || '';
+        document.getElementById('recurrence-start-year').value = recurrence.start_year || '';
+        document.getElementById('recurrence-interval-months').value = recurrence.interval_months || 1;
+        document.getElementById('recurrence-occurrences').value = recurrence.occurrences || 12;
+        recurrenceCategorySelect.value = recurrence.category_id || '';
+        document.getElementById('recurrence-payment-method').value = recurrence.payment_method || 'debit';
+        document.getElementById('recurrence-confirmed').value = String(Boolean(recurrence.confirmed));
+        document.getElementById('recurrence-notes').value = recurrence.notes || '';
+        deleteRecurrenceButton.style.display = '';
+      } else {
+        recurrenceForm.reset();
+        document.getElementById('recurrence-id').value = '';
+        setRecurrenceInitialValues();
+        deleteRecurrenceButton.style.display = 'none';
+      }
+      toggleRecurrenceKindFields();
+      recurrenceModal.classList.add('active');
+    }
+
+    function closeRecurrenceModalForm() {
+      recurrenceModal.classList.remove('active');
+    }
+
+    function renderRecurrences(recurrences) {
+      currentRecurrences = recurrences;
+      recurrencesList.replaceChildren();
+      recurrences.forEach((recurrence) => {
+        const item = document.createElement('li');
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = recurrence.name;
+        const detail = document.createElement('small');
+        detail.textContent = `${recurrence.kind} • a cada ${recurrence.interval_months} mês(es)`;
+        info.appendChild(title);
+        info.appendChild(detail);
+
+        const actions = document.createElement('div');
+        actions.className = 'inline-actions';
+        const applyButton = document.createElement('button');
+        applyButton.type = 'button';
+        applyButton.className = 'button secondary';
+        applyButton.dataset.applyRecurrence = recurrence.id;
+        applyButton.textContent = 'Aplicar';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'button secondary';
+        editButton.dataset.editRecurrence = recurrence.id;
+        editButton.textContent = 'Editar';
+        actions.appendChild(applyButton);
+        actions.appendChild(editButton);
+
+        item.appendChild(info);
+        item.appendChild(actions);
+        recurrencesList.appendChild(item);
+      });
+    }
+
+    async function loadRecurrences() {
+      const recurrences = await window.api.listRecurrences();
+      renderRecurrences(recurrences);
     }
 
     form.addEventListener('submit', async (event) => {
@@ -367,6 +632,121 @@
       }
     });
 
+    categoryForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const id = Number(document.getElementById('category-modal-id').value || 0);
+        const payload = {
+          name: document.getElementById('category-name').value.trim(),
+          description: document.getElementById('category-description').value.trim(),
+        };
+        if (id) {
+          await window.api.updateCategory(id, payload);
+          showToast('Categoria atualizada com sucesso.');
+        } else {
+          await window.api.createCategory(payload);
+          showToast('Categoria criada com sucesso.');
+        }
+        closeCategoryModalForm();
+        await loadCategories();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    categoriesList.addEventListener('click', (event) => {
+      const editId = event.target.getAttribute('data-edit-category');
+      if (!editId) return;
+      const category = currentCategories.find((item) => item.id === Number(editId));
+      if (category) openCategoryModalForm(category);
+    });
+
+    deleteCategoryButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('category-modal-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir esta categoria?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteCategory(id);
+        showToast('Categoria excluída com sucesso.');
+        closeCategoryModalForm();
+        await loadCategories();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    recurrenceForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const id = Number(document.getElementById('recurrence-id').value || 0);
+        const kind = recurrenceKindSelect.value;
+        const payload = {
+          kind,
+          name: document.getElementById('recurrence-name').value.trim(),
+          value: parseDecimal(document.getElementById('recurrence-value').value, 'Valor'),
+          start_month: Number(document.getElementById('recurrence-start-month').value),
+          start_year: Number(document.getElementById('recurrence-start-year').value),
+          interval_months: Number(document.getElementById('recurrence-interval-months').value),
+          occurrences: Number(document.getElementById('recurrence-occurrences').value),
+          category_id: recurrenceCategorySelect.value ? Number(recurrenceCategorySelect.value) : null,
+          notes: document.getElementById('recurrence-notes').value.trim(),
+        };
+        if (kind === 'expense') {
+          payload.payment_method = document.getElementById('recurrence-payment-method').value;
+        } else {
+          payload.confirmed = document.getElementById('recurrence-confirmed').value === 'true';
+        }
+        if (id) {
+          await window.api.updateRecurrence(id, payload);
+          showToast('Recorrência atualizada com sucesso.');
+        } else {
+          await window.api.createRecurrence(payload);
+          showToast('Recorrência criada com sucesso.');
+        }
+        closeRecurrenceModalForm();
+        await loadRecurrences();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    recurrencesList.addEventListener('click', async (event) => {
+      const editId = event.target.getAttribute('data-edit-recurrence');
+      if (editId) {
+        const recurrence = currentRecurrences.find((item) => item.id === Number(editId));
+        if (recurrence) openRecurrenceModalForm(recurrence);
+        return;
+      }
+      const applyId = event.target.getAttribute('data-apply-recurrence');
+      if (!applyId) return;
+      const confirmed = window.confirm('Aplicar esta recorrência agora?');
+      if (!confirmed) return;
+      try {
+        const result = await window.api.applyRecurrence(Number(applyId));
+        const createdCount = (result.expenses || []).length + (result.incomes || []).length;
+        showToast(`Recorrência aplicada! ${createdCount} lançamento(s) criado(s).`);
+        await loadExpenses();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
+    deleteRecurrenceButton.addEventListener('click', async () => {
+      const id = Number(document.getElementById('recurrence-id').value || 0);
+      if (!id) return;
+      const confirmed = window.confirm('Tem certeza que deseja excluir esta recorrência?');
+      if (!confirmed) return;
+      try {
+        await window.api.deleteRecurrence(id);
+        showToast('Recorrência excluída com sucesso.');
+        closeRecurrenceModalForm();
+        await loadRecurrences();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    });
+
     recurringToggle.addEventListener('change', toggleRecurringFields);
     recurringFilter.addEventListener('change', () => loadExpenses().catch(console.error));
 
@@ -376,8 +756,23 @@
     expenseModal.addEventListener('click', (event) => {
       if (event.target === expenseModal) closeModal();
     });
+    openCategoryModal.addEventListener('click', () => openCategoryModalForm(null));
+    closeCategoryModal.addEventListener('click', closeCategoryModalForm);
+    cancelCategory.addEventListener('click', closeCategoryModalForm);
+    categoryModal.addEventListener('click', (event) => {
+      if (event.target === categoryModal) closeCategoryModalForm();
+    });
+    openRecurrenceModal.addEventListener('click', () => openRecurrenceModalForm(null));
+    closeRecurrenceModal.addEventListener('click', closeRecurrenceModalForm);
+    cancelRecurrence.addEventListener('click', closeRecurrenceModalForm);
+    recurrenceModal.addEventListener('click', (event) => {
+      if (event.target === recurrenceModal) closeRecurrenceModalForm();
+    });
+    recurrenceKindSelect.addEventListener('change', toggleRecurrenceKindFields);
 
-    Promise.all([loadExpenses(), loadCards(), loadCategories()]).catch((error) => {
+    setRecurrenceInitialValues();
+
+    Promise.all([loadExpenses(), loadCards(), loadCategories(), loadRecurrences()]).catch((error) => {
       console.error(error);
       list.replaceChildren();
       const item = document.createElement('li');

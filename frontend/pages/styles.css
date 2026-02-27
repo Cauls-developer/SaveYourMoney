@@ -15,6 +15,19 @@
   --radius-lg: 18px;
   --radius-md: 12px;
   --sidebar-width: 240px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --text-primary-size: 1rem;
+  --text-secondary-size: 0.9rem;
+  --text-tertiary-size: 0.8rem;
+  --text-primary-weight: 700;
+  --text-secondary-weight: 600;
+  --text-tertiary-weight: 500;
 }
 
 * {
@@ -78,6 +91,12 @@ body {
   z-index: 12;
 }
 
+.nav-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .logo {
   display: flex;
   align-items: center;
@@ -90,6 +109,39 @@ body {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
   margin-bottom: 12px;
+}
+
+.nav-collapse {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: var(--cream);
+  background: transparent;
+  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+}
+
+.nav-collapse-icon {
+  display: inline-block;
+  transition: transform 0.25s ease;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  margin: 3px 0;
+}
+
+.app-nav a[data-icon]::before {
+  content: attr(data-icon);
+  margin-right: 8px;
+  opacity: 0.9;
+}
+
+.nav-overlay {
+  display: none;
 }
 
 .logo-image {
@@ -143,6 +195,76 @@ body {
   letter-spacing: 0.11em;
   color: var(--wine-dark);
   font-weight: 800;
+}
+
+body.nav-collapsed .navbar {
+  width: 88px;
+  padding-inline: 10px;
+}
+
+body.nav-collapsed .app {
+  margin-left: 116px;
+}
+
+body.nav-collapsed .logo span,
+body.nav-collapsed .app-nav a {
+  font-size: 0;
+}
+
+body.nav-collapsed .app-nav a[data-icon]::before {
+  margin-right: 0;
+  font-size: 1rem;
+}
+
+body.nav-collapsed .nav-collapse-icon {
+  transform: rotate(180deg);
+}
+
+/* Design System helpers:
+   - Use stack-* for vertical spacing between widgets/blocks.
+   - Use text-primary/text-secondary/text-tertiary for content hierarchy. */
+.stack-1 > * + * {
+  margin-top: var(--space-1);
+}
+
+.stack-2 > * + * {
+  margin-top: var(--space-2);
+}
+
+.stack-3 > * + * {
+  margin-top: var(--space-3);
+}
+
+.stack-4 > * + * {
+  margin-top: var(--space-4);
+}
+
+.stack-5 > * + * {
+  margin-top: var(--space-5);
+}
+
+.widget-gap {
+  gap: var(--space-4);
+}
+
+.text-primary {
+  font-size: var(--text-primary-size);
+  font-weight: var(--text-primary-weight);
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+
+.text-secondary {
+  font-size: var(--text-secondary-size);
+  font-weight: var(--text-secondary-weight);
+  color: var(--text-muted);
+}
+
+.text-tertiary {
+  font-size: var(--text-tertiary-size);
+  font-weight: var(--text-tertiary-weight);
+  color: var(--text-muted);
+  opacity: 0.9;
 }
 
 .grid {
@@ -235,6 +357,41 @@ body {
   color: var(--wine-dark);
 }
 
+.report-summary {
+  gap: var(--space-4);
+}
+
+.report-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.report-card::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--wine-primary), var(--turquoise));
+  opacity: 0.75;
+}
+
+.report-card .metric-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-tertiary-size);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.report-card .metric-value {
+  font-size: clamp(1.5rem, 2.3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--wine-dark);
+}
+
 .button,
 .btn-primary {
   border: none;
@@ -286,10 +443,20 @@ body {
 
 .list li strong {
   font-size: 0.98rem;
+  display: block;
+  margin-bottom: var(--space-1);
 }
 
 .list li small {
   color: var(--text-muted);
+  display: block;
+  line-height: 1.45;
+}
+
+.list li > div:first-child,
+.list-item > div:first-child {
+  display: grid;
+  gap: var(--space-1);
 }
 
 .pill,
@@ -450,11 +617,12 @@ textarea {
 }
 
 .calculator-answer {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: #fff8e6;
+  padding: 14px;
+  border-radius: 12px;
+  background: linear-gradient(140deg, #fff8e6 0%, #fffdf4 100%);
   border: 1px solid var(--border-soft);
   font-weight: 700;
+  min-height: 64px;
 }
 
 .calc-layout {
@@ -465,9 +633,9 @@ textarea {
 
 .calc-screen {
   margin-top: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   padding: 16px 14px;
-  background: #fff;
+  background: linear-gradient(135deg, #ffffff 0%, #fff9ec 100%);
   border-radius: 12px;
   border: 1px solid var(--border-soft);
   text-align: right;
@@ -536,6 +704,12 @@ textarea {
   align-items: flex-start;
 }
 
+.calc-note {
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: var(--text-tertiary-size);
+}
+
 @media (max-width: 900px) {
   .calc-layout {
     grid-template-columns: 1fr;
@@ -596,6 +770,10 @@ textarea {
     margin-left: 0;
   }
 
+  body.nav-collapsed .app {
+    margin-left: 0;
+  }
+
   .navbar {
     width: 100%;
     height: auto;
@@ -611,9 +789,20 @@ textarea {
     margin-bottom: 0;
   }
 
+  .nav-brand-row {
+    width: 100%;
+  }
+
+  .nav-collapse {
+    display: none;
+  }
+
   .nav-toggle {
     display: inline-flex;
     margin-left: auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
 
   .app-nav {
@@ -630,6 +819,14 @@ textarea {
 
   body.nav-open .app-nav {
     display: flex;
+  }
+
+  body.nav-open .nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 6, 18, 0.35);
+    z-index: 11;
   }
 
   .app-header {

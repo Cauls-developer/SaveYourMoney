@@ -22,12 +22,10 @@
           <a href="dashboard.html">Dashboard</a>
           <a href="expenses.html">Gastos</a>
           <a href="incomes.html">Entradas</a>
-          <a href="categories.html">Categorias</a>
-          <a href="cards.html">Cartões</a>
+          <a href="banks.html">Bancos</a>
           <a class="active" href="reports.html">Relatórios</a>
           <a href="goals.html">Metas</a>
-          <a href="recurrences.html">Recorrências</a>
-          <a href="backup.html">Backup</a>
+          <a href="settings.html">Configurações</a>
         </nav>
       </div>
     </header>
@@ -53,18 +51,18 @@
     </div>
 
     <section class="section-title">Resumo do mês</section>
-    <div class="grid cols-3">
-      <div class="card">
-        <h3>Total de Gastos</h3>
-        <div id="report-expenses">R$ 0,00</div>
+    <div class="grid cols-3 report-summary">
+      <div class="card report-card">
+        <span class="metric-label">Total de Gastos</span>
+        <div id="report-expenses" class="metric-value">R$ 0,00</div>
       </div>
-      <div class="card">
-        <h3>Total de Entradas</h3>
-        <div id="report-incomes">R$ 0,00</div>
+      <div class="card report-card">
+        <span class="metric-label">Total de Entradas</span>
+        <div id="report-incomes" class="metric-value">R$ 0,00</div>
       </div>
-      <div class="card">
-        <h3>Saldo</h3>
-        <div id="report-balance">R$ 0,00</div>
+      <div class="card report-card">
+        <span class="metric-label">Saldo</span>
+        <div id="report-balance" class="metric-value">R$ 0,00</div>
       </div>
     </div>
 
@@ -104,7 +102,18 @@
       reportCategories.replaceChildren();
       Object.entries(report.by_category || {}).forEach(([name, value]) => {
         const item = document.createElement('li');
-        item.textContent = `${name} - ${formatCurrency(value)}`;
+        const info = document.createElement('div');
+        info.className = 'stack-1';
+        const title = document.createElement('strong');
+        title.textContent = name;
+        const detail = document.createElement('small');
+        detail.textContent = 'Gasto por categoria';
+        info.appendChild(title);
+        info.appendChild(detail);
+        const amount = document.createElement('strong');
+        amount.textContent = formatCurrency(value);
+        item.appendChild(info);
+        item.appendChild(amount);
         reportCategories.appendChild(item);
       });
       reportGoals.replaceChildren();
@@ -112,8 +121,14 @@
         const ok = goal.remaining >= 0;
         const status = ok ? 'Dentro do limite' : 'Estourou';
         const item = document.createElement('li');
-        const summary = document.createElement('span');
-        summary.textContent = `${goal.name} - ${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)} `;
+        const summary = document.createElement('div');
+        summary.className = 'stack-1';
+        const title = document.createElement('strong');
+        title.textContent = goal.name;
+        const detail = document.createElement('small');
+        detail.textContent = `${formatCurrency(goal.spent)} / ${formatCurrency(goal.limit_value)}`;
+        summary.appendChild(title);
+        summary.appendChild(detail);
         const pill = document.createElement('span');
         pill.className = `pill ${ok ? 'ok' : 'alert'}`;
         pill.textContent = status;

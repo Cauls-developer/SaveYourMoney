@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Configurações</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <h2>Configurações</h2>
+        <p>Centralize preferências, backups e restauração dos seus dados.</p>
+      </div>
+      <div class="navbar">
+        <div class="nav-brand-row">
+          <a class="logo" href="dashboard.html">
+            <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
+            <span>Save Your Money</span>
+          </a>
+          <button id="nav-collapse" class="nav-collapse" aria-label="Ocultar navega??o" aria-expanded="true" aria-pressed="false" aria-controls="app-nav" title="Ocultar navega??o"><span class="nav-collapse-icon" aria-hidden="true">&#x25C0;</span></button>
+        </div>
+        <button id="nav-toggle" class="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="app-nav"><span></span><span></span><span></span></button>
+
+        <nav id="app-nav" class="app-nav">
+          <a href="dashboard.html" data-icon="&#x1F3E0;">Dashboard</a>
+          <a href="expenses.html" data-icon="&#x1F4B8;">Gastos</a>
+          <a href="incomes.html" data-icon="&#x1F4B0;">Entradas</a>
+          <a href="banks.html" data-icon="&#x1F3E6;">Bancos</a>
+          <a href="reports.html" data-icon="&#x1F4CA;">Relatórios</a>
+          <a href="goals.html" data-icon="&#x1F3AF;">Metas</a>
+          <a class="active" href="settings.html" data-icon="&#9881;">Configurações</a>
+        </nav>
+      </div>
+    </header>
+    <div id="nav-overlay" class="nav-overlay"></div>
+
+    <section class="section-title">Backup</section>
+    <div class="card">
+      <p class="muted">Gera um arquivo JSON com cartões, gastos, recorrências, entradas, categorias, metas e configurações.</p>
+      <div class="inline-actions">
+        <button id="export-backup" class="button">Exportar backup</button>
+      </div>
+      <div id="export-result" class="muted"></div>
+    </div>
+
+    <section class="section-title">Restauração</section>
+    <div class="card">
+      <p class="muted">Aceita apenas arquivos <code>.json</code>. A restauração substitui todos os dados atuais.</p>
+      <div class="app-form" style="grid-template-columns: 1fr;">
+        <div class="field">
+          <label for="backup-file">Arquivo de backup</label>
+          <input id="backup-file" type="file" accept=".json,application/json" />
+        </div>
+        <button id="restore-backup" type="button" class="button">Restaurar backup</button>
+      </div>
+      <div id="restore-result" class="muted"></div>
+    </div>
+  </div>
+
+  <script>
+    const exportButton = document.getElementById('export-backup');
+    const exportResult = document.getElementById('export-result');
+    const restoreButton = document.getElementById('restore-backup');
+    const restoreResult = document.getElementById('restore-result');
+    const backupFileInput = document.getElementById('backup-file');
+
+    function validateBackupShape(payload) {
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+        throw new Error('Arquivo inválido. O backup deve ser um objeto JSON.');
+      }
+      if (typeof payload.version !== 'string' || !payload.version.trim()) {
+        throw new Error('Arquivo inválido. Versão de backup ausente.');
+      }
+      if (!payload.version.startsWith('1.')) {
+        throw new Error('Versão incompatível de backup para este aplicativo.');
+      }
+      const requiredArrays = ['cards', 'expenses', 'recurringExpenses', 'income', 'categories'];
+      for (const key of requiredArrays) {
+        if (!Array.isArray(payload[key])) {
+          throw new Error(`Arquivo inválido. Campo '${key}' deve ser uma lista.`);
+        }
+      }
+      if (payload.settings !== undefined && (typeof payload.settings !== 'object' || payload.settings === null || Array.isArray(payload.settings))) {
+        throw new Error("Arquivo inválido. Campo 'settings' deve ser um objeto.");
+      }
+    }
+
+    function setBusyState(isBusy) {
+      exportButton.disabled = isBusy;
+      restoreButton.disabled = isBusy;
+    }
+
+    function downloadJsonFile(filename, data) {
+      const content = JSON.stringify(data, null, 2);
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    exportButton.addEventListener('click', async () => {
+      exportResult.textContent = 'Exportando backup...';
+      restoreResult.textContent = '';
+      setBusyState(true);
+      try {
+        const backup = await window.api.exportBackup();
+        const now = new Date();
+        const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+        downloadJsonFile(`saveyourmoney_backup_${stamp}.json`, backup);
+        exportResult.textContent = 'Backup exportado com sucesso.';
+      } catch (error) {
+        exportResult.textContent = error.message || 'Erro ao exportar backup.';
+      } finally {
+        setBusyState(false);
+      }
+    });
+
+    restoreButton.addEventListener('click', async () => {
+      restoreResult.textContent = '';
+      exportResult.textContent = '';
+      const file = backupFileInput.files && backupFileInput.files[0];
+      if (!file) {
+        restoreResult.textContent = 'Selecione um arquivo .json para restaurar.';
+        return;
+      }
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        restoreResult.textContent = 'Arquivo inválido. Selecione um arquivo .json.';
+        return;
+      }
+
+      const confirmed = window.confirm('Restaurar um backup substituirá todos os dados atuais do aplicativo. Deseja continuar?');
+      if (!confirmed) {
+        restoreResult.textContent = 'Restauração cancelada.';
+        return;
+      }
+
+      setBusyState(true);
+      restoreResult.textContent = 'Restaurando backup...';
+
+      try {
+        const text = await file.text();
+        let payload;
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          throw new Error('Arquivo inválido. Verifique se o JSON está correto.');
+        }
+        validateBackupShape(payload);
+        const response = await window.api.restoreBackup(payload);
+        const imported = response.imported || {};
+        const totalImported = Object.values(imported).reduce((sum, value) => sum + Number(value || 0), 0);
+        restoreResult.textContent = `${response.message || 'Backup restaurado com sucesso.'} ${totalImported} registro(s) importado(s).`;
+      } catch (error) {
+        restoreResult.textContent = error.message || 'Não foi possível restaurar o backup. Verifique se o arquivo é válido.';
+      } finally {
+        setBusyState(false);
+      }
+    });
+
+    const navToggle = document.getElementById('nav-toggle');
+    const navOverlay = document.getElementById('nav-overlay');
+    if (navToggle) {
+      const toggleNav = () => {
+        const isOpen = document.body.classList.toggle('nav-open');
+        navToggle.classList.toggle('active', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      };
+      navToggle.addEventListener('click', toggleNav);
+      if (navOverlay) {
+        navOverlay.addEventListener('click', toggleNav);
+      }
+    }
+
+    const navCollapse = document.getElementById('nav-collapse');
+    if (navCollapse) {
+      const updateLabel = () => {
+        const isCollapsed = document.body.classList.contains('nav-collapsed');
+        navCollapse.setAttribute('aria-label', isCollapsed ? 'Mostrar navega??o' : 'Ocultar navega??o');
+        navCollapse.setAttribute('title', isCollapsed ? 'Mostrar navega??o' : 'Ocultar navega??o');
+        navCollapse.setAttribute('aria-expanded', String(!isCollapsed));
+        navCollapse.setAttribute('aria-pressed', String(isCollapsed));
+      };
+      updateLabel();
+      navCollapse.addEventListener('click', () => {
+        document.body.classList.toggle('nav-collapsed');
+        updateLabel();
+      });
+    }
+  </script>
+  <script src="calculator-widget.js"></script>
+</body>
+</html>
+
+
+
+
+
+
