@@ -12,22 +12,6 @@
         <h2>Entradas</h2>
         <p>Planeje suas entradas e receitas.</p>
       </div>
-      <div class="navbar">
-        <div class="logo">
-          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
-          <span>Save Your Money</span>
-        </div>
-        <button id="nav-toggle" class="nav-toggle">Menu</button>
-        <nav class="app-nav">
-          <a href="dashboard.html">Dashboard</a>
-          <a href="expenses.html">Gastos</a>
-          <a class="active" href="incomes.html">Entradas</a>
-          <a href="banks.html">Bancos</a>
-          <a href="reports.html">Relatórios</a>
-          <a href="goals.html">Metas</a>
-          <a href="settings.html">Configurações</a>
-        </nav>
-      </div>
     </header>
     <div class="section-title">Entradas do mês</div>
     <button id="open-income-modal" class="button">Nova entrada</button>
@@ -245,12 +229,10 @@
       list.appendChild(item);
     });
 
-    const navToggle = document.getElementById('nav-toggle');
-    if (navToggle) {
-      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
-    }
   </script>
   <script src="calculator-widget.js"></script>
 </body>
 </html>
+
+
 

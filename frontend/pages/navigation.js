@@ -19,15 +19,14 @@
     <button id="app-menu-toggle" class="topbar-toggle" type="button" aria-label="Abrir menu lateral" aria-expanded="false" aria-controls="app-nav">
       <span></span><span></span><span></span>
     </button>
-    <h1 class="topbar-title">Save Your Money</h1>
+    <a class="topbar-brand" href="dashboard.html" aria-label="Save Your Money">
+      <img src="../assets/logo.png" alt="" class="topbar-logo-image" />
+      <span class="topbar-title">Save Your Money</span>
+    </a>
   `;
   document.body.prepend(topbar);
 
   const navMarkup = `
-    <a class="logo" href="dashboard.html">
-      <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
-      <span>Save Your Money</span>
-    </a>
     <nav id="app-nav" class="app-nav">
       ${navLinks.map((link) => `
         <a href="${link.href}" data-icon="${link.icon}" class="${currentPage === link.href ? 'active' : ''}">${link.label}</a>

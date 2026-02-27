@@ -69,14 +69,30 @@ body {
   z-index: 20;
 }
 
-.topbar-title {
+.topbar-brand {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-strong);
+}
+
+.topbar-title {
   margin: 0;
   font-size: clamp(1.05rem, 1.5vw, 1.25rem);
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+.topbar-logo-image {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .topbar-toggle {
@@ -213,7 +229,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .app-nav a {
@@ -448,6 +464,43 @@ body.nav-collapsed .nav-collapse-icon {
   background: linear-gradient(140deg, #fffef8 0%, #fffdfa 100%);
   border: 1px solid var(--border-soft);
   padding: 8px;
+}
+
+.report-export-card {
+  min-height: min(52vh, 480px);
+  display: grid;
+  place-items: center;
+}
+
+.report-export-page {
+  width: min(540px, 100%);
+  text-align: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.report-export-button {
+  min-width: 260px;
+  min-height: 48px;
+}
+
+.report-export-button.is-loading {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+.report-feedback {
+  min-height: 22px;
+  font-weight: 700;
+}
+
+.report-feedback.success {
+  color: #0d7b51;
+}
+
+.report-feedback.error {
+  color: #ad2a1d;
 }
 
 .button,
@@ -868,6 +921,15 @@ textarea {
 
   .app-header {
     margin-top: 0;
+  }
+
+  .topbar-brand {
+    gap: 8px;
+  }
+
+  .topbar-logo-image {
+    width: 24px;
+    height: 24px;
   }
 
   .grid.cols-3,

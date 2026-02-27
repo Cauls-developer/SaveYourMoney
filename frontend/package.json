@@ -28,16 +28,48 @@
         "to": "update-config.json"
       },
       {
-        "from": "../backend",
-        "to": "backend",
-        "filter": [
-          "**/*",
-          "!tests/**",
-          "!__pycache__/**",
-          "!.venv/**",
-          "!build/**",
-          "!dist/**"
-        ]
+        "from": "../backend/SaveYourMoney-Backend.exe",
+        "to": "backend/SaveYourMoney-Backend.exe"
+      },
+      {
+        "from": "../backend/__init__.py",
+        "to": "backend/__init__.py"
+      },
+      {
+        "from": "../backend/app.py",
+        "to": "backend/app.py"
+      },
+      {
+        "from": "../backend/errors.py",
+        "to": "backend/errors.py"
+      },
+      {
+        "from": "../backend/state.py",
+        "to": "backend/state.py"
+      },
+      {
+        "from": "../backend/domain",
+        "to": "backend/domain"
+      },
+      {
+        "from": "../backend/repositories",
+        "to": "backend/repositories"
+      },
+      {
+        "from": "../backend/routes",
+        "to": "backend/routes"
+      },
+      {
+        "from": "../backend/schemas",
+        "to": "backend/schemas"
+      },
+      {
+        "from": "../backend/services",
+        "to": "backend/services"
+      },
+      {
+        "from": "../backend/use_cases",
+        "to": "backend/use_cases"
       }
     ],
     "win": {

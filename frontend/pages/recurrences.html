@@ -12,22 +12,6 @@
         <h2>Recorrências</h2>
         <p>Automatize gastos e entradas periódicas.</p>
       </div>
-      <div class="navbar">
-        <div class="logo">
-          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
-          <span>Save Your Money</span>
-        </div>
-        <button id="nav-toggle" class="nav-toggle">Menu</button>
-        <nav class="app-nav">
-          <a href="dashboard.html">Dashboard</a>
-          <a href="expenses.html">Gastos</a>
-          <a href="incomes.html">Entradas</a>
-          <a href="banks.html">Bancos</a>
-          <a href="reports.html">Relatórios</a>
-          <a href="goals.html">Metas</a>
-          <a href="settings.html">Configurações</a>
-        </nav>
-      </div>
     </header>
 
     <div class="section-title">Recorrências cadastradas</div>
@@ -333,12 +317,10 @@
 
     Promise.all([loadCategories(), loadRecurrences()]).catch(console.error);
 
-    const navToggle = document.getElementById('nav-toggle');
-    if (navToggle) {
-      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
-    }
   </script>
   <script src="calculator-widget.js"></script>
 </body>
 </html>
+
+
 

@@ -12,22 +12,6 @@
         <h1>Save Your Money</h1>
         <p>Uma visão clara do seu mês financeiro.</p>
       </div>
-      <div class="navbar">
-        <div class="logo">
-          <img src="../assets/logo.png" alt="Save Your Money" class="logo-image" />
-          <span>Save Your Money</span>
-        </div>
-        <button id="nav-toggle" class="nav-toggle">Menu</button>
-        <nav class="app-nav">
-          <a class="active" href="dashboard.html">Dashboard</a>
-          <a href="expenses.html">Gastos</a>
-          <a href="incomes.html">Entradas</a>
-          <a href="banks.html">Bancos</a>
-          <a href="reports.html">Relatórios</a>
-          <a href="goals.html">Metas</a>
-          <a href="settings.html">Configurações</a>
-        </nav>
-      </div>
     </header>
     <section class="hero">
       <div class="grid cols-3">
@@ -235,15 +219,13 @@
 
     loadSummary();
 
-    const navToggle = document.getElementById('nav-toggle');
-    if (navToggle) {
-      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
-    }
 
   </script>
   <script src="calculator-widget.js"></script>
 </body>
 </html>
+
+
 
 
 
