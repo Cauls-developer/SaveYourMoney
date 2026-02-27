@@ -45,11 +45,59 @@ body {
 
 body {
   padding: 24px;
+  padding-top: 92px;
 }
 
 .app {
   margin-left: calc(var(--sidebar-width) + 28px);
   padding-bottom: 28px;
+}
+
+.global-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 20px;
+  background: linear-gradient(135deg, #fffef8 0%, #fff8ea 100%);
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.topbar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: clamp(1.05rem, 1.5vw, 1.25rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.topbar-toggle {
+  border: 1px solid rgba(108, 4, 60, 0.28);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--wine-dark);
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-toggle span {
+  width: 18px;
+  height: 2px;
+  background: currentColor;
 }
 
 .app-header {
@@ -80,7 +128,7 @@ body {
 .navbar {
   position: fixed;
   left: 0;
-  top: 0;
+  top: 68px;
   bottom: 0;
   width: var(--sidebar-width);
   padding: 24px 16px;
@@ -390,6 +438,16 @@ body.nav-collapsed .nav-collapse-icon {
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--wine-dark);
+}
+
+.report-chart {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: linear-gradient(140deg, #fffef8 0%, #fffdfa 100%);
+  border: 1px solid var(--border-soft);
+  padding: 8px;
 }
 
 .button,
@@ -764,6 +822,7 @@ textarea {
 @media (max-width: 1024px) {
   body {
     padding: 16px;
+    padding-top: 84px;
   }
 
   .app {
@@ -775,50 +834,28 @@ textarea {
   }
 
   .navbar {
-    width: 100%;
+    width: min(320px, calc(100vw - 24px));
+    top: 76px;
+    left: 12px;
+    bottom: 12px;
     height: auto;
-    min-height: 68px;
-    bottom: auto;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 14px;
-  }
-
-  .logo {
-    margin-bottom: 0;
-  }
-
-  .nav-brand-row {
-    width: 100%;
-  }
-
-  .nav-collapse {
-    display: none;
-  }
-
-  .nav-toggle {
-    display: inline-flex;
-    margin-left: auto;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    min-height: 0;
+    border-radius: 14px;
+    transform: translateX(calc(-100% - 24px));
+    transition: transform 0.25s ease;
+    padding: 16px 12px;
   }
 
   .app-nav {
-    display: none;
-    position: absolute;
-    top: 64px;
-    left: 14px;
-    right: 14px;
-    padding: 10px;
-    border-radius: 12px;
-    background: rgba(33, 1, 35, 0.97);
-    box-shadow: var(--shadow-md);
+    display: flex;
   }
 
   body.nav-open .app-nav {
     display: flex;
+  }
+
+  body.nav-open .navbar {
+    transform: translateX(0);
   }
 
   body.nav-open .nav-overlay {
@@ -830,7 +867,7 @@ textarea {
   }
 
   .app-header {
-    margin-top: 72px;
+    margin-top: 0;
   }
 
   .grid.cols-3,

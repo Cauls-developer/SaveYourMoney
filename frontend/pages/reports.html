@@ -10,7 +10,7 @@
     <header class="app-header">
       <div class="brand">
         <h2>Relatórios</h2>
-        <p>Visão consolidada do mês.</p>
+        <p>Fatura mensal consolidada com visão analítica.</p>
       </div>
       <div class="navbar">
         <div class="logo">
@@ -66,13 +66,32 @@
       </div>
     </div>
 
+    <section class="section-title">Analise visual</section>
+    <div class="split">
+      <div class="card">
+        <h3>Distribuicao por categoria</h3>
+        <canvas id="category-chart" class="report-chart" width="420" height="260"></canvas>
+      </div>
+      <div class="card">
+        <h3>Entradas vs Saidas</h3>
+        <canvas id="flow-chart" class="report-chart" width="420" height="260"></canvas>
+      </div>
+    </div>
+
     <section class="section-title">Gastos por categoria</section>
     <ul id="report-categories" class="list"></ul>
+
+    <section class="section-title">Gastos detalhados do mes</section>
+    <ul id="report-expense-list" class="list"></ul>
+
+    <section class="section-title">Entradas detalhadas do mes</section>
+    <ul id="report-income-list" class="list"></ul>
 
     <section class="section-title">Metas do mês</section>
     <ul id="report-goals" class="list"></ul>
   </div>
 
+  <script src="navigation.js"></script>
   <script>
     const form = document.getElementById('report-form');
     const reportExpenses = document.getElementById('report-expenses');
@@ -80,8 +99,13 @@
     const reportBalance = document.getElementById('report-balance');
     const reportCategories = document.getElementById('report-categories');
     const reportGoals = document.getElementById('report-goals');
+    const reportExpenseList = document.getElementById('report-expense-list');
+    const reportIncomeList = document.getElementById('report-income-list');
+    const categoryChart = document.getElementById('category-chart');
+    const flowChart = document.getElementById('flow-chart');
     const exportCsv = document.getElementById('export-csv');
     const exportPdf = document.getElementById('export-pdf');
+    const chartPalette = ['#910142', '#0ec0c1', '#6c043c', '#b83a6f', '#106365', '#c07894', '#755a66'];
 
     function showToast(message, isError = false) {
       const toast = document.createElement('div');
@@ -95,29 +119,185 @@
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     }
 
-    function renderReport(report) {
-      reportExpenses.textContent = formatCurrency(report.total_expenses);
-      reportIncomes.textContent = formatCurrency(report.total_incomes);
-      reportBalance.textContent = formatCurrency(report.balance);
+    function formatMonthYear(month, year) {
+      const date = new Date(year, month - 1, 1);
+      return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    }
+
+    function formatDate(day, month, year) {
+      if (!day) return `${String(month).padStart(2, '0')}/${year}`;
+      return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+    }
+
+    function renderCategoryList(byCategory) {
       reportCategories.replaceChildren();
-      Object.entries(report.by_category || {}).forEach(([name, value]) => {
+      const entries = Object.entries(byCategory || {});
+      if (!entries.length) {
         const item = document.createElement('li');
-        const info = document.createElement('div');
-        info.className = 'stack-1';
-        const title = document.createElement('strong');
-        title.textContent = name;
-        const detail = document.createElement('small');
-        detail.textContent = 'Gasto por categoria';
-        info.appendChild(title);
-        info.appendChild(detail);
-        const amount = document.createElement('strong');
-        amount.textContent = formatCurrency(value);
-        item.appendChild(info);
-        item.appendChild(amount);
+        item.innerHTML = '<small class="muted">Sem gastos por categoria no periodo.</small>';
         reportCategories.appendChild(item);
+        return;
+      }
+      entries
+        .sort((a, b) => b[1] - a[1])
+        .forEach(([name, value]) => {
+          const item = document.createElement('li');
+          const info = document.createElement('div');
+          info.className = 'stack-1';
+          const title = document.createElement('strong');
+          title.textContent = name;
+          const detail = document.createElement('small');
+          detail.textContent = 'Gasto por categoria';
+          info.appendChild(title);
+          info.appendChild(detail);
+          const amount = document.createElement('strong');
+          amount.textContent = formatCurrency(value);
+          item.appendChild(info);
+          item.appendChild(amount);
+          reportCategories.appendChild(item);
+        });
+    }
+
+    function renderExpenseDetails(expenses, month, year) {
+      reportExpenseList.replaceChildren();
+      if (!expenses.length) {
+        const item = document.createElement('li');
+        item.innerHTML = '<small class="muted">Nenhum gasto no periodo selecionado.</small>';
+        reportExpenseList.appendChild(item);
+        return;
+      }
+
+      expenses
+        .slice()
+        .sort((a, b) => Number(b.day || 0) - Number(a.day || 0))
+        .forEach((expense) => {
+          const item = document.createElement('li');
+          const info = document.createElement('div');
+          info.className = 'stack-1';
+
+          const title = document.createElement('strong');
+          title.textContent = expense.name || 'Gasto';
+          const detail = document.createElement('small');
+          detail.textContent = `${expense.category || 'Sem categoria'} - ${formatDate(expense.day, month, year)}`;
+
+          info.appendChild(title);
+          info.appendChild(detail);
+
+          const amount = document.createElement('strong');
+          amount.textContent = formatCurrency(expense.value || 0);
+
+          item.appendChild(info);
+          item.appendChild(amount);
+          reportExpenseList.appendChild(item);
+        });
+    }
+
+    function renderIncomeDetails(incomes, month, year) {
+      reportIncomeList.replaceChildren();
+      if (!incomes.length) {
+        const item = document.createElement('li');
+        item.innerHTML = '<small class="muted">Nenhuma entrada no periodo selecionado.</small>';
+        reportIncomeList.appendChild(item);
+        return;
+      }
+
+      incomes
+        .slice()
+        .sort((a, b) => Number(b.day || 0) - Number(a.day || 0))
+        .forEach((income) => {
+          const item = document.createElement('li');
+          const info = document.createElement('div');
+          info.className = 'stack-1';
+
+          const title = document.createElement('strong');
+          title.textContent = income.name || 'Entrada';
+          const detail = document.createElement('small');
+          const status = income.confirmed ? 'Confirmada' : 'Prevista';
+          detail.textContent = `${status} - ${formatDate(income.day, month, year)}`;
+
+          info.appendChild(title);
+          info.appendChild(detail);
+
+          const amount = document.createElement('strong');
+          amount.textContent = formatCurrency(income.value || 0);
+
+          item.appendChild(info);
+          item.appendChild(amount);
+          reportIncomeList.appendChild(item);
+        });
+    }
+
+    function drawPieChart(canvas, valuesByCategory) {
+      const context = canvas.getContext('2d');
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const entries = Object.entries(valuesByCategory || {}).filter(([, value]) => Number(value) > 0);
+      if (!entries.length) {
+        context.fillStyle = '#6f5d6a';
+        context.font = '600 14px Manrope';
+        context.fillText('Sem dados para o grafico.', 20, 36);
+        return;
+      }
+
+      const total = entries.reduce((sum, [, value]) => sum + Number(value), 0);
+      const cx = 125;
+      const cy = 130;
+      const radius = 88;
+      let startAngle = -Math.PI / 2;
+
+      entries.forEach(([name, value], index) => {
+        const sliceValue = Number(value);
+        const sliceAngle = (sliceValue / total) * Math.PI * 2;
+        context.beginPath();
+        context.moveTo(cx, cy);
+        context.fillStyle = chartPalette[index % chartPalette.length];
+        context.arc(cx, cy, radius, startAngle, startAngle + sliceAngle);
+        context.closePath();
+        context.fill();
+        startAngle += sliceAngle;
+
+        const legendY = 28 + index * 22;
+        context.fillRect(250, legendY - 10, 12, 12);
+        context.fillStyle = '#2f1427';
+        context.font = '600 12px Manrope';
+        context.fillText(`${name} (${((sliceValue / total) * 100).toFixed(1)}%)`, 268, legendY);
       });
+    }
+
+    function drawFlowChart(canvas, totalIncomes, totalExpenses) {
+      const context = canvas.getContext('2d');
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      const values = [Number(totalIncomes || 0), Number(totalExpenses || 0)];
+      const maxValue = Math.max(...values, 1);
+      const baselineY = 220;
+      const barWidth = 120;
+      const xStart = 70;
+      const gap = 95;
+
+      context.strokeStyle = 'rgba(108, 4, 60, 0.2)';
+      context.beginPath();
+      context.moveTo(40, baselineY);
+      context.lineTo(380, baselineY);
+      context.stroke();
+
+      const labels = ['Entradas', 'Saidas'];
+      const colors = ['#0ec0c1', '#910142'];
+      values.forEach((value, index) => {
+        const x = xStart + index * (barWidth + gap);
+        const height = (value / maxValue) * 150;
+        const y = baselineY - height;
+        context.fillStyle = colors[index];
+        context.fillRect(x, y, barWidth, height);
+        context.fillStyle = '#2f1427';
+        context.font = '700 12px Manrope';
+        context.fillText(labels[index], x + 24, baselineY + 22);
+        context.fillText(formatCurrency(value), x + 8, y - 8);
+      });
+    }
+
+    function renderGoals(goals) {
       reportGoals.replaceChildren();
-      (report.goals || []).forEach((goal) => {
+      (goals || []).forEach((goal) => {
         const ok = goal.remaining >= 0;
         const status = ok ? 'Dentro do limite' : 'Estourou';
         const item = document.createElement('li');
@@ -138,9 +318,30 @@
       });
     }
 
+    function renderReport(report, expenses, incomes, month, year) {
+      reportExpenses.textContent = formatCurrency(report.total_expenses);
+      reportIncomes.textContent = formatCurrency(report.total_incomes);
+      reportBalance.textContent = formatCurrency(report.balance);
+      renderCategoryList(report.by_category || {});
+      renderExpenseDetails(expenses, month, year);
+      renderIncomeDetails(incomes, month, year);
+      renderGoals(report.goals || []);
+      drawPieChart(categoryChart, report.by_category || {});
+      drawFlowChart(flowChart, report.total_incomes, report.total_expenses);
+
+      const periodText = formatMonthYear(month, year);
+      reportExpenses.closest('.card').querySelector('.metric-label').textContent = `Total de gastos - ${periodText}`;
+      reportIncomes.closest('.card').querySelector('.metric-label').textContent = `Total de entradas - ${periodText}`;
+      reportBalance.closest('.card').querySelector('.metric-label').textContent = `Saldo liquido - ${periodText}`;
+    }
+
     async function loadReport(month, year) {
-      const report = await window.api.getMonthlyReport(month, year);
-      renderReport(report);
+      const [report, expenses, incomes] = await Promise.all([
+        window.api.getMonthlyReport(month, year),
+        window.api.listExpenses(month, year),
+        window.api.listIncomes(month, year),
+      ]);
+      renderReport(report, expenses, incomes, month, year);
     }
 
     form.addEventListener('submit', async (event) => {
@@ -175,10 +376,6 @@
       window.open(`http://localhost:5000/relatorios/mes/pdf?mes=${month}&ano=${year}`);
     });
 
-    const navToggle = document.getElementById('nav-toggle');
-    if (navToggle) {
-      navToggle.addEventListener('click', () => document.body.classList.toggle('nav-open'));
-    }
   </script>
   <script src="calculator-widget.js"></script>
 </body>
